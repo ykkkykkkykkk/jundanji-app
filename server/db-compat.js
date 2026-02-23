@@ -62,7 +62,7 @@ class DatabaseWrapper {
   }
 
   exec(sql) {
-    this._db.run(sql)
+    this._db.exec(sql)
   }
 
   pragma(pragmaStr) {
