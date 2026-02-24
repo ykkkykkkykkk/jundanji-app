@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import MainPage from './pages/MainPage'
 import DetailPage from './pages/DetailPage'
 import MyPage from './pages/MyPage'
@@ -7,6 +7,7 @@ import AdminPage from './pages/AdminPage'
 import NotificationPage from './pages/NotificationPage'
 import BottomNav from './components/BottomNav'
 import PointAnimation from './components/PointAnimation'
+import SplashScreen from './components/SplashScreen'
 import { shareFlyer, getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark } from './api/index'
 
 const GUEST_USER_ID = 1  // 게스트 사용자
@@ -43,6 +44,7 @@ export default function App() {
     return loadAuth()
   })
   const [darkMode, setDarkMode] = useState(() => loadDarkMode())
+  const [showSplash, setShowSplash] = useState(true)
   const [showLogin, setShowLogin] = useState(false)
   const [page, setPage] = useState('main')
   const [selectedFlyer, setSelectedFlyer] = useState(null)
@@ -176,6 +178,12 @@ export default function App() {
   }
 
   const showBottomNav = ['main', 'mypage', 'admin'].includes(page)
+
+  const handleSplashFinish = useCallback(() => setShowSplash(false), [])
+
+  if (showSplash) {
+    return <SplashScreen onFinish={handleSplashFinish} />
+  }
 
   if (showLogin) {
     return <LoginPage onLogin={handleLogin} />
