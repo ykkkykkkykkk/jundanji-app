@@ -1,9 +1,13 @@
-require('dotenv').config()
+const isVercel = !!process.env.VERCEL
+
+// 로컬 환경에서만 dotenv 로드 (Vercel은 대시보드 환경변수 사용)
+if (!isVercel) {
+  require('dotenv').config()
+}
+
 const express = require('express')
 const cors = require('cors')
 const path = require('path')
-
-const isVercel = !!process.env.VERCEL
 
 const flyersRouter = require('./routes/flyers')
 const shareRouter = require('./routes/share')
