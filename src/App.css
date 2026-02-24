@@ -1694,19 +1694,10 @@ body {
 }
 
 .splash-character {
-  font-size: 90px;
-  animation: splashBounce 0.4s ease infinite alternate, splashWiggle 0.3s ease infinite;
+  animation: splashBounce 0.8s ease infinite alternate;
   filter: drop-shadow(0 8px 20px rgba(0,0,0,0.15));
   z-index: 10;
   margin-bottom: 8px;
-}
-
-.splash-arm {
-  font-size: 40px;
-  margin-top: -30px;
-  margin-left: 50px;
-  animation: splashThrowArm 0.3s ease infinite alternate;
-  z-index: 10;
 }
 
 .splash-logo {
@@ -1757,16 +1748,6 @@ body {
 @keyframes splashBounce {
   from { transform: translateY(0px) scale(1); }
   to   { transform: translateY(-18px) scale(1.05); }
-}
-
-@keyframes splashWiggle {
-  0%   { transform: rotate(-8deg) translateY(-9px); }
-  100% { transform: rotate(8deg) translateY(-9px); }
-}
-
-@keyframes splashThrowArm {
-  from { transform: rotate(-30deg) translateX(0px); }
-  to   { transform: rotate(20deg) translateX(15px); }
 }
 
 @keyframes splashFlyDown {
