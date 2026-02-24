@@ -127,23 +127,68 @@ export default function App() {
   const handleShare = async () => {
     if (!selectedFlyer || sharedFlyerIds.has(selectedFlyer.id)) return
 
-    // Web Share API
-    if (navigator.share) {
+    const shareUrl = 'https://jundanji-app.vercel.app'
+
+    // 카카오톡 공유 우선 시도
+    if (window.Kakao && window.Kakao.Share) {
       try {
-        await navigator.share({
-          title: `[전단지P] ${selectedFlyer.storeName} - ${selectedFlyer.title}`,
-          text: selectedFlyer.subtitle,
-          url: window.location.href,
+        await window.Kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: `${selectedFlyer.storeEmoji} ${selectedFlyer.storeName}`,
+            description: `${selectedFlyer.title}\n${selectedFlyer.subtitle}`,
+            imageUrl: selectedFlyer.imageUrl
+              ? `${shareUrl}${selectedFlyer.imageUrl}`
+              : `${shareUrl}/icon-512.png`,
+            link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+          },
+          buttons: [
+            {
+              title: '전단지 보러가기',
+              link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+            },
+          ],
         })
       } catch (e) {
-        if (e.name === 'AbortError') return
+        console.warn('카카오 공유 실패, 폴백:', e)
+        // 폴백: Web Share API / Clipboard
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: `[전단지P] ${selectedFlyer.storeName} - ${selectedFlyer.title}`,
+              text: selectedFlyer.subtitle,
+              url: shareUrl,
+            })
+          } catch (e2) {
+            if (e2.name === 'AbortError') return
+          }
+        } else {
+          try {
+            await navigator.clipboard.writeText(
+              `[전단지P] ${selectedFlyer.storeName} ${selectedFlyer.title}\n${shareUrl}`
+            )
+          } catch {}
+        }
       }
     } else {
-      try {
-        await navigator.clipboard.writeText(
-          `[전단지P] ${selectedFlyer.storeName} ${selectedFlyer.title}\n${window.location.href}`
-        )
-      } catch {}
+      // 카카오 SDK 없는 환경 폴백
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `[전단지P] ${selectedFlyer.storeName} - ${selectedFlyer.title}`,
+            text: selectedFlyer.subtitle,
+            url: shareUrl,
+          })
+        } catch (e) {
+          if (e.name === 'AbortError') return
+        }
+      } else {
+        try {
+          await navigator.clipboard.writeText(
+            `[전단지P] ${selectedFlyer.storeName} ${selectedFlyer.title}\n${shareUrl}`
+          )
+        } catch {}
+      }
     }
 
     const result = await shareFlyer(userId, selectedFlyer.id)
