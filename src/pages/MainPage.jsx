@@ -224,9 +224,6 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
                 </div>
 
                 <div className="flyer-card-footer">
-                  <span className="share-count">
-                    👥 {flyer.shareCount.toLocaleString()}명 공유
-                  </span>
                   <button
                     className={`card-bookmark-btn${bookmarkedIds.has(flyer.id) ? ' bookmarked' : ''}`}
                     onClick={e => { e.stopPropagation(); onBookmarkToggle?.(flyer) }}
@@ -236,7 +233,7 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
                   </button>
                   {!expired && (
                     <div className="point-badge">
-                      🪙 공유 시 +{flyer.sharePoint}P
+                      🎰 긁어서 확인하기
                     </div>
                   )}
                 </div>

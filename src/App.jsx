@@ -10,7 +10,7 @@ import BottomNav from './components/BottomNav'
 import PointAnimation from './components/PointAnimation'
 import SplashScreen from './components/SplashScreen'
 import ScratchCard from './components/ScratchCard'
-import { shareFlyer, getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory } from './api/index'
+import { getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory } from './api/index'
 
 const GUEST_USER_ID = 1  // 게스트 사용자
 
@@ -58,7 +58,7 @@ export default function App() {
   const [visitHistory, setVisitHistory] = useState([])
   const [showPointAnim, setShowPointAnim] = useState(false)
   const [earnedPoints, setEarnedPoints] = useState(0)
-  const [sharedFlyerIds, setSharedFlyerIds] = useState(new Set())
+  const [sharedFlyerIds] = useState(new Set())
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set())
   const [bookmarkedFlyers, setBookmarkedFlyers] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -167,97 +167,6 @@ export default function App() {
     getVisitHistory(userId).then(setVisitHistory).catch(() => {})
   }
 
-  const handleShare = async () => {
-    if (!selectedFlyer || sharedFlyerIds.has(selectedFlyer.id)) return
-
-    const shareUrl = 'https://jundanji-app.vercel.app'
-
-    // 카카오톡 공유 우선 시도
-    if (window.Kakao && window.Kakao.Share) {
-      try {
-        await window.Kakao.Share.sendDefault({
-          objectType: 'feed',
-          content: {
-            title: `${selectedFlyer.storeEmoji} ${selectedFlyer.storeName}`,
-            description: `${selectedFlyer.title}\n${selectedFlyer.subtitle}`,
-            imageUrl: selectedFlyer.imageUrl
-              ? `${shareUrl}${selectedFlyer.imageUrl}`
-              : `${shareUrl}/icon-512.png`,
-            link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
-          },
-          buttons: [
-            {
-              title: '전단지 보러가기',
-              link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
-            },
-          ],
-        })
-      } catch (e) {
-        console.warn('카카오 공유 실패, 폴백:', e)
-        if (navigator.share) {
-          try {
-            await navigator.share({
-              title: `[전단지P] ${selectedFlyer.storeName} - ${selectedFlyer.title}`,
-              text: selectedFlyer.subtitle,
-              url: shareUrl,
-            })
-          } catch (e2) {
-            if (e2.name === 'AbortError') return
-          }
-        } else {
-          try {
-            await navigator.clipboard.writeText(
-              `[전단지P] ${selectedFlyer.storeName} ${selectedFlyer.title}\n${shareUrl}`
-            )
-          } catch {}
-        }
-      }
-    } else {
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: `[전단지P] ${selectedFlyer.storeName} - ${selectedFlyer.title}`,
-            text: selectedFlyer.subtitle,
-            url: shareUrl,
-          })
-        } catch (e) {
-          if (e.name === 'AbortError') return
-        }
-      } else {
-        try {
-          await navigator.clipboard.writeText(
-            `[전단지P] ${selectedFlyer.storeName} ${selectedFlyer.title}\n${shareUrl}`
-          )
-        } catch {}
-      }
-    }
-
-    const result = await shareFlyer(userId, selectedFlyer.id)
-
-    if (!result.ok) {
-      if (result.status === 409) {
-        setSharedFlyerIds(prev => new Set([...prev, selectedFlyer.id]))
-      }
-      return
-    }
-
-    const { earnedPoints: earned, totalPoints } = result.data
-    setEarnedPoints(earned)
-    setShowPointAnim(true)
-    setPoints(totalPoints)
-    setSharedFlyerIds(prev => new Set([...prev, selectedFlyer.id]))
-    setSelectedFlyer(prev => ({ ...prev, shareCount: prev.shareCount + 1 }))
-    setShareHistory(prev => [{
-      flyerId: selectedFlyer.id,
-      storeName: selectedFlyer.storeName,
-      storeEmoji: selectedFlyer.storeEmoji,
-      storeColor: selectedFlyer.storeColor,
-      title: selectedFlyer.title,
-      points: earned,
-      sharedAt: new Date().toLocaleString('ko-KR'),
-    }, ...prev])
-  }
-
   const handleNavigate = (target) => {
     setPage(target)
     setSelectedFlyer(null)
@@ -296,8 +205,6 @@ export default function App() {
             setPage('main')
             requestAnimationFrame(() => window.scrollTo(0, scrollPosRef.current))
           }}
-          onShare={handleShare}
-          alreadyShared={sharedFlyerIds.has(selectedFlyer.id)}
           isBookmarked={bookmarkedIds.has(selectedFlyer.id)}
           onBookmarkToggle={() => handleBookmarkToggle(selectedFlyer)}
           userId={userId}

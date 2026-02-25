@@ -15,7 +15,7 @@ function isExpired(validUntil) {
   return new Date(y, m - 1, d + 1) <= new Date()
 }
 
-export default function DetailPage({ flyer, onBack, onShare, alreadyShared, isBookmarked, onBookmarkToggle, userId, onQuizPoints }) {
+export default function DetailPage({ flyer, onBack, isBookmarked, onBookmarkToggle, userId, onQuizPoints }) {
   const expired = isExpired(flyer.validUntil)
   const [quiz, setQuiz] = useState(null)
   const [showQuiz, setShowQuiz] = useState(false)
@@ -81,9 +81,9 @@ export default function DetailPage({ flyer, onBack, onShare, alreadyShared, isBo
         <div className="detail-valid">
           📅 {flyer.validFrom} ~ {flyer.validUntil}
         </div>
-        <div className="detail-share-count">
-          👥 {flyer.shareCount.toLocaleString()}명이 공유했어요
-        </div>
+        {flyer.subtitle && (
+          <div className="detail-subtitle">{flyer.subtitle}</div>
+        )}
       </div>
 
       {/* 퀴즈 상태 배지 */}
@@ -118,27 +118,6 @@ export default function DetailPage({ flyer, onBack, onShare, alreadyShared, isBo
             </div>
           )
         })}
-      </div>
-
-      {/* 공유 버튼 */}
-      <div className="share-btn-wrap">
-        <button
-          className="share-btn"
-          onClick={onShare}
-          disabled={alreadyShared || expired}
-          style={(alreadyShared || expired) ? { background: '#CCC', boxShadow: 'none' } : {}}
-        >
-          {expired ? (
-            <>⛔ 이벤트가 종료된 전단지예요</>
-          ) : alreadyShared ? (
-            <>✅ 오늘 이미 공유했어요</>
-          ) : (
-            <>
-              📤 공유하기
-              <span className="share-btn-point">+{flyer.sharePoint}P 받기</span>
-            </>
-          )}
-        </button>
       </div>
 
       {/* 퀴즈 모달 */}
