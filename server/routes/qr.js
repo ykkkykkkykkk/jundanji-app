@@ -64,13 +64,14 @@ router.post('/qr/verify', (req, res) => {
     return res.status(404).json({ ok: false, message: '유효하지 않은 QR 코드입니다.' })
   }
 
-  // 이미 방문 인증 체크
+  // 1일 1회 방문 인증 체크
   const existing = db.prepare(
-    'SELECT id FROM visit_verifications WHERE user_id = ? AND flyer_id = ?'
+    `SELECT id FROM visit_verifications
+     WHERE user_id = ? AND flyer_id = ? AND DATE(verified_at) = DATE('now', 'localtime')`
   ).get(userId, flyer.id)
 
   if (existing) {
-    return res.status(409).json({ ok: false, message: '이미 방문 인증을 완료했습니다.' })
+    return res.status(409).json({ ok: false, message: '오늘 이미 방문 인증을 완료했습니다. 내일 다시 인증할 수 있어요!' })
   }
 
   const earnedPoints = flyer.qr_point || 100

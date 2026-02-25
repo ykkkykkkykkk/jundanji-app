@@ -23,7 +23,7 @@ export default function QrScanPage({ userId, onPointsEarned, onBack, isLoggedIn,
         onPointsEarned(res.data.earnedPoints, res.data.totalPoints)
       } else {
         if (res.status === 409) {
-          setError('이미 방문 인증을 완료한 매장입니다.')
+          setError('오늘 이미 방문 인증을 완료했습니다. 내일 다시 인증할 수 있어요!')
         } else if (res.status === 404) {
           setError('유효하지 않은 QR 코드입니다.')
         } else {

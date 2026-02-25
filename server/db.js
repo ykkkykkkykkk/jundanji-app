@@ -126,8 +126,7 @@ db.exec(`
     user_id        INTEGER NOT NULL REFERENCES users(id),
     flyer_id       INTEGER NOT NULL REFERENCES flyers(id),
     points_earned  INTEGER NOT NULL DEFAULT 0,
-    verified_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-    UNIQUE(user_id, flyer_id)
+    verified_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
   );
 `)
 

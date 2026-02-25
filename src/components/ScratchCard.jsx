@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 
 const BRUSH_RADIUS = 28
-const REVEAL_THRESHOLD = 0.55
+const REVEAL_THRESHOLD = 0.80
 
 export default function ScratchCard({ flyer, onComplete, onClose }) {
   const canvasRef = useRef(null)
