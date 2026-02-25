@@ -88,6 +88,7 @@ router.get('/', (req, res) => {
       f.id, f.store_name, f.store_emoji, f.store_color, f.store_bg_color,
       f.category, f.title, f.subtitle, f.valid_from, f.valid_until,
       f.share_point, f.share_count, f.tags, f.image_url,
+      f.qr_point, f.owner_id, f.qr_code,
       json_group_array(
         json_object(
           'name', fi.name,
@@ -116,6 +117,9 @@ router.get('/', (req, res) => {
     shareCount: row.share_count,
     tags: JSON.parse(row.tags),
     imageUrl: row.image_url || null,
+    qrPoint: row.qr_point || 0,
+    ownerId: row.owner_id || null,
+    qrCode: row.qr_code || null,
     items: JSON.parse(row.items),
   }))
 
@@ -140,7 +144,8 @@ router.get('/:id', (req, res) => {
     SELECT
       f.id, f.store_name, f.store_emoji, f.store_color, f.store_bg_color,
       f.category, f.title, f.subtitle, f.valid_from, f.valid_until,
-      f.share_point, f.share_count, f.tags, f.image_url
+      f.share_point, f.share_count, f.tags, f.image_url,
+      f.qr_point, f.owner_id, f.qr_code
     FROM flyers f
     WHERE f.id = ?
   `).get(id)
@@ -173,6 +178,9 @@ router.get('/:id', (req, res) => {
       shareCount: flyer.share_count,
       tags: JSON.parse(flyer.tags),
       imageUrl: flyer.image_url || null,
+      qrPoint: flyer.qr_point || 0,
+      ownerId: flyer.owner_id || null,
+      qrCode: flyer.qr_code || null,
       items,
     },
   })
@@ -182,7 +190,7 @@ router.get('/:id', (req, res) => {
 // POST /api/flyers (multipart/form-data)
 router.post('/', upload.single('image'), (req, res) => {
   const { storeName, storeEmoji, storeColor, storeBgColor, category, title, subtitle,
-          validFrom, validUntil, sharePoint, tags, items } = req.body
+          validFrom, validUntil, sharePoint, qrPoint, ownerId, tags, items } = req.body
 
   if (!storeName || !title || !category || !validFrom || !validUntil) {
     if (!isVercel && req.file) fs.unlinkSync(req.file.path)
@@ -202,11 +210,11 @@ router.post('/', upload.single('image'), (req, res) => {
   const insertTx = db.transaction(() => {
     const { lastInsertRowid: flyerId } = db.prepare(`
       INSERT INTO flyers (store_name, store_emoji, store_color, store_bg_color, category, title, subtitle,
-                          valid_from, valid_until, share_point, share_count, tags, image_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                          valid_from, valid_until, share_point, share_count, tags, image_url, qr_point, owner_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
     `).run(storeName, storeEmoji || '🏪', storeColor || '#FF4757', storeBgColor || '#FFF5F5',
            category, title, subtitle || '', validFrom, validUntil, Number(sharePoint) || 10,
-           JSON.stringify(parsedTags), imageUrl)
+           JSON.stringify(parsedTags), imageUrl, Number(qrPoint) || 0, ownerId ? Number(ownerId) : null)
 
     parsedItems.forEach((item, idx) => {
       db.prepare(`
@@ -243,7 +251,7 @@ router.post('/', upload.single('image'), (req, res) => {
 router.put('/:id', upload.single('image'), (req, res) => {
   const { id } = req.params
   const { storeName, storeEmoji, storeColor, storeBgColor, category, title, subtitle,
-          validFrom, validUntil, sharePoint, tags, items } = req.body
+          validFrom, validUntil, sharePoint, qrPoint, tags, items } = req.body
 
   const existing = db.prepare('SELECT id, image_url FROM flyers WHERE id = ?').get(id)
   if (!existing) {
@@ -267,10 +275,10 @@ router.put('/:id', upload.single('image'), (req, res) => {
   const updateTx = db.transaction(() => {
     db.prepare(`
       UPDATE flyers SET store_name=?, store_emoji=?, store_color=?, store_bg_color=?,
-      category=?, title=?, subtitle=?, valid_from=?, valid_until=?, share_point=?, tags=?, image_url=?
+      category=?, title=?, subtitle=?, valid_from=?, valid_until=?, share_point=?, tags=?, image_url=?, qr_point=?
       WHERE id=?
     `).run(storeName, storeEmoji, storeColor, storeBgColor, category, title, subtitle,
-           validFrom, validUntil, Number(sharePoint), JSON.stringify(parsedTags), imageUrl, id)
+           validFrom, validUntil, Number(sharePoint), JSON.stringify(parsedTags), imageUrl, Number(qrPoint) || 0, id)
 
     if (parsedItems.length) {
       db.prepare('DELETE FROM flyer_items WHERE flyer_id = ?').run(id)

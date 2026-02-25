@@ -57,11 +57,11 @@ export async function getUserShareHistory(userId) {
 }
 
 // 회원가입
-export async function register(email, password, nickname) {
+export async function register(email, password, nickname, role) {
   return fetchJSON(`${BASE}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, nickname }),
+    body: JSON.stringify({ email, password, nickname, role }),
   })
 }
 
@@ -94,6 +94,8 @@ export async function createFlyer(data, imageFile) {
   fd.append('validFrom', data.validFrom)
   fd.append('validUntil', data.validUntil)
   fd.append('sharePoint', String(data.sharePoint || 10))
+  fd.append('qrPoint', String(data.qrPoint || 0))
+  if (data.ownerId) fd.append('ownerId', String(data.ownerId))
   fd.append('tags', JSON.stringify(data.tags || []))
   fd.append('items', JSON.stringify(data.items || []))
   if (imageFile) fd.append('image', imageFile)
@@ -113,6 +115,7 @@ export async function updateFlyer(id, data, imageFile) {
   fd.append('validFrom', data.validFrom)
   fd.append('validUntil', data.validUntil)
   fd.append('sharePoint', String(data.sharePoint || 10))
+  fd.append('qrPoint', String(data.qrPoint || 0))
   fd.append('tags', JSON.stringify(data.tags || []))
   fd.append('items', JSON.stringify(data.items || []))
   if (imageFile) fd.append('image', imageFile)
@@ -201,5 +204,90 @@ export async function updateNickname(token, nickname) {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ nickname }),
+  })
+}
+
+// ======== 퀴즈 API ========
+
+// 퀴즈 등록 (사업자)
+export async function registerQuizzes(flyerId, quizzes, token) {
+  return fetchJSON(`${BASE}/flyers/${flyerId}/quizzes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ quizzes }),
+  })
+}
+
+// 퀴즈 목록 조회 (사업자용)
+export async function getQuizzesByFlyer(flyerId) {
+  return fetchJSON(`${BASE}/flyers/${flyerId}/quizzes`)
+}
+
+// 랜덤 퀴즈 1문제 출제
+export async function getRandomQuiz(flyerId, userId) {
+  const res = await fetch(`${BASE}/flyers/${flyerId}/quiz?userId=${userId}`)
+  const json = await res.json()
+  if (!json.ok) throw new Error(json.message)
+  return { data: json.data, attempted: json.attempted }
+}
+
+// 퀴즈 정답 제출
+export async function submitQuizAnswer(userId, flyerId, quizId, selectedIdx) {
+  return fetchJSON(`${BASE}/quiz/attempt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, flyerId, quizId, selectedIdx }),
+  })
+}
+
+// 퀴즈 응시 내역
+export async function getQuizHistory(userId) {
+  return fetchJSON(`${BASE}/users/${userId}/quiz-history`)
+}
+
+// ======== QR API ========
+
+// QR 코드 생성 (사업자)
+export async function generateQrCode(flyerId, token) {
+  return fetchJSON(`${BASE}/flyers/${flyerId}/qr/generate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+// QR 코드 데이터 조회
+export async function getQrCode(flyerId) {
+  return fetchJSON(`${BASE}/flyers/${flyerId}/qr`)
+}
+
+// QR 스캔 인증
+export async function verifyQrCode(userId, qrCode) {
+  const res = await fetch(`${BASE}/qr/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, qrCode }),
+  })
+  const data = await res.json()
+  return { ok: res.ok, status: res.status, data: data.data, message: data.message }
+}
+
+// 방문 인증 내역
+export async function getVisitHistory(userId) {
+  return fetchJSON(`${BASE}/users/${userId}/visit-history`)
+}
+
+// ======== 사업자 API ========
+
+// 사업자 대시보드 통계
+export async function getBusinessStats(token) {
+  return fetchJSON(`${BASE}/business/stats`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+// 사업자 전단지 목록
+export async function getBusinessFlyers(token) {
+  return fetchJSON(`${BASE}/business/flyers`, {
+    headers: { Authorization: `Bearer ${token}` },
   })
 }

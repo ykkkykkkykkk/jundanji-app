@@ -16,6 +16,9 @@ const notificationsRouter = require('./routes/notifications')
 const socialRouter = require('./routes/social')
 const { router: pushRouter } = require('./routes/push')
 const bookmarksRouter = require('./routes/bookmarks')
+const quizRouter = require('./routes/quiz')
+const qrRouter = require('./routes/qr')
+const businessRouter = require('./routes/business')
 
 const app = express()
 
@@ -46,6 +49,9 @@ app.use('/api/notifications', notificationsRouter)
 app.use('/api/auth', socialRouter)
 app.use('/api/push', pushRouter)
 app.use('/api', bookmarksRouter)
+app.use('/api', quizRouter)
+app.use('/api', qrRouter)
+app.use('/api/business', businessRouter)
 
 // 404
 app.use('/api', (req, res) => {

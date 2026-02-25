@@ -1,3 +1,7 @@
+import { useState, useEffect } from 'react'
+import QuizModal from '../components/QuizModal'
+import { getRandomQuiz, submitQuizAnswer } from '../api/index'
+
 function formatPrice(price) {
   return price.toLocaleString() + '원'
 }
@@ -11,8 +15,42 @@ function isExpired(validUntil) {
   return new Date(y, m - 1, d + 1) <= new Date()
 }
 
-export default function DetailPage({ flyer, onBack, onShare, alreadyShared, isBookmarked, onBookmarkToggle }) {
+export default function DetailPage({ flyer, onBack, onShare, alreadyShared, isBookmarked, onBookmarkToggle, userId, onQuizPoints }) {
   const expired = isExpired(flyer.validUntil)
+  const [quiz, setQuiz] = useState(null)
+  const [showQuiz, setShowQuiz] = useState(false)
+  const [quizResult, setQuizResult] = useState(null)
+  const [quizAttempted, setQuizAttempted] = useState(false)
+
+  useEffect(() => {
+    if (!userId || !flyer.id) return
+    getRandomQuiz(flyer.id, userId).then(res => {
+      if (res.attempted) {
+        setQuizAttempted(true)
+      } else if (res.data) {
+        setQuiz(res.data)
+        setShowQuiz(true)
+      }
+    }).catch(() => {})
+  }, [flyer.id, userId])
+
+  const handleQuizAnswer = async (selectedIdx) => {
+    try {
+      const result = await submitQuizAnswer(userId, flyer.id, quiz.quizId, selectedIdx)
+      setQuizResult(result)
+      if (result.isCorrect && onQuizPoints) {
+        onQuizPoints(result.earnedPoints, result.totalPoints)
+      }
+    } catch (e) {
+      setQuizResult({ isCorrect: false, earnedPoints: 0, correctIdx: -1 })
+    }
+  }
+
+  const handleQuizClose = () => {
+    setShowQuiz(false)
+    setQuizAttempted(true)
+  }
+
   return (
     <div className="page">
       <div className="page-header">
@@ -47,6 +85,13 @@ export default function DetailPage({ flyer, onBack, onShare, alreadyShared, isBo
           👥 {flyer.shareCount.toLocaleString()}명이 공유했어요
         </div>
       </div>
+
+      {/* 퀴즈 상태 배지 */}
+      {quizAttempted && (
+        <div className="quiz-attempted-badge">
+          ✅ 퀴즈 참여 완료
+        </div>
+      )}
 
       {/* 태그 */}
       <div className="detail-tags-wrap">
@@ -95,6 +140,16 @@ export default function DetailPage({ flyer, onBack, onShare, alreadyShared, isBo
           )}
         </button>
       </div>
+
+      {/* 퀴즈 모달 */}
+      {showQuiz && quiz && (
+        <QuizModal
+          quiz={quiz}
+          onAnswer={handleQuizAnswer}
+          onClose={handleQuizClose}
+          result={quizResult}
+        />
+      )}
     </div>
   )
 }

@@ -5,10 +5,12 @@ import MyPage from './pages/MyPage'
 import LoginPage from './pages/LoginPage'
 import AdminPage from './pages/AdminPage'
 import NotificationPage from './pages/NotificationPage'
+import QrScanPage from './pages/QrScanPage'
 import BottomNav from './components/BottomNav'
 import PointAnimation from './components/PointAnimation'
 import SplashScreen from './components/SplashScreen'
-import { shareFlyer, getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark } from './api/index'
+import ScratchCard from './components/ScratchCard'
+import { shareFlyer, getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory } from './api/index'
 
 const GUEST_USER_ID = 1  // 게스트 사용자
 
@@ -20,7 +22,8 @@ function loadAuth() {
   const token = localStorage.getItem('token')
   const userId = localStorage.getItem('userId')
   const nickname = localStorage.getItem('nickname')
-  if (token && userId) return { token, userId: Number(userId), nickname }
+  const role = localStorage.getItem('role') || 'user'
+  if (token && userId) return { token, userId: Number(userId), nickname, role }
   return null
 }
 
@@ -37,7 +40,7 @@ export default function App() {
       localStorage.setItem('userId', userId)
       localStorage.setItem('nickname', decoded)
       window.history.replaceState({}, '', '/')
-      return { token, userId: Number(userId), nickname: decoded }
+      return { token, userId: Number(userId), nickname: decoded, role: 'user' }
     }
     // 에러 파라미터 처리
     if (params.get('error')) window.history.replaceState({}, '', '/')
@@ -51,15 +54,20 @@ export default function App() {
   const [points, setPoints] = useState(0)
   const [nickname, setNickname] = useState(auth?.nickname ?? '홍길동')
   const [shareHistory, setShareHistory] = useState([])
+  const [quizHistory, setQuizHistory] = useState([])
+  const [visitHistory, setVisitHistory] = useState([])
   const [showPointAnim, setShowPointAnim] = useState(false)
   const [earnedPoints, setEarnedPoints] = useState(0)
   const [sharedFlyerIds, setSharedFlyerIds] = useState(new Set())
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set())
   const [bookmarkedFlyers, setBookmarkedFlyers] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [showScratchCard, setShowScratchCard] = useState(false)
+  const [scratchFlyer, setScratchFlyer] = useState(null)
   const scrollPosRef = useRef(0)
 
   const userId = auth ? auth.userId : GUEST_USER_ID
+  const userRole = auth?.role || 'user'
 
   // 다크모드 적용
   useEffect(() => {
@@ -73,13 +81,17 @@ export default function App() {
       getUserPoints(userId),
       getUserShareHistory(userId),
       getUserBookmarks(userId),
-    ]).then(([pointData, historyData, bookmarkData]) => {
+      getQuizHistory(userId).catch(() => []),
+      getVisitHistory(userId).catch(() => []),
+    ]).then(([pointData, historyData, bookmarkData, quizData, visitData]) => {
       setPoints(pointData.points)
       setNickname(auth?.nickname ?? pointData.nickname ?? '홍길동')
       setShareHistory(historyData)
       setSharedFlyerIds(new Set(historyData.map(h => h.flyerId)))
       setBookmarkedFlyers(bookmarkData)
       setBookmarkedIds(new Set(bookmarkData.map(f => f.id)))
+      setQuizHistory(quizData)
+      setVisitHistory(visitData)
     }).catch(err => console.error('유저 데이터 로드 실패:', err.message))
   }, [userId])
 
@@ -87,6 +99,7 @@ export default function App() {
     if (data) {
       setAuth(data)
       setNickname(data.nickname)
+      if (data.role) localStorage.setItem('role', data.role)
     }
     setShowLogin(false)
   }
@@ -95,10 +108,13 @@ export default function App() {
     localStorage.removeItem('token')
     localStorage.removeItem('userId')
     localStorage.removeItem('nickname')
+    localStorage.removeItem('role')
     setAuth(null)
     setNickname('홍길동')
     setPoints(0)
     setShareHistory([])
+    setQuizHistory([])
+    setVisitHistory([])
     setSharedFlyerIds(new Set())
     setBookmarkedIds(new Set())
     setBookmarkedFlyers([])
@@ -120,8 +136,35 @@ export default function App() {
 
   const handleFlyerClick = (flyer) => {
     scrollPosRef.current = window.scrollY
+    setScratchFlyer(flyer)
+    setShowScratchCard(true)
+  }
+
+  const handleScratchComplete = (flyer) => {
+    setShowScratchCard(false)
     setSelectedFlyer(flyer)
     setPage('detail')
+  }
+
+  const handleScratchClose = () => {
+    setShowScratchCard(false)
+    setScratchFlyer(null)
+  }
+
+  const handleQuizPoints = (earned, total) => {
+    setEarnedPoints(earned)
+    setShowPointAnim(true)
+    setPoints(total)
+    // 퀴즈 히스토리 갱신
+    getQuizHistory(userId).then(setQuizHistory).catch(() => {})
+  }
+
+  const handleQrPointsEarned = (earned, total) => {
+    setEarnedPoints(earned)
+    setShowPointAnim(true)
+    setPoints(total)
+    // 방문 히스토리 갱신
+    getVisitHistory(userId).then(setVisitHistory).catch(() => {})
   }
 
   const handleShare = async () => {
@@ -151,7 +194,6 @@ export default function App() {
         })
       } catch (e) {
         console.warn('카카오 공유 실패, 폴백:', e)
-        // 폴백: Web Share API / Clipboard
         if (navigator.share) {
           try {
             await navigator.share({
@@ -171,7 +213,6 @@ export default function App() {
         }
       }
     } else {
-      // 카카오 SDK 없는 환경 폴백
       if (navigator.share) {
         try {
           await navigator.share({
@@ -222,7 +263,7 @@ export default function App() {
     setSelectedFlyer(null)
   }
 
-  const showBottomNav = ['main', 'mypage', 'admin'].includes(page)
+  const showBottomNav = ['main', 'mypage', 'admin', 'scan'].includes(page)
 
   const handleSplashFinish = useCallback(() => setShowSplash(false), [])
 
@@ -259,11 +300,17 @@ export default function App() {
           alreadyShared={sharedFlyerIds.has(selectedFlyer.id)}
           isBookmarked={bookmarkedIds.has(selectedFlyer.id)}
           onBookmarkToggle={() => handleBookmarkToggle(selectedFlyer)}
+          userId={userId}
+          onQuizPoints={handleQuizPoints}
         />
       )}
 
       {page === 'admin' && (
-        <AdminPage onBack={() => setPage('main')} />
+        <AdminPage
+          onBack={() => setPage('main')}
+          token={auth?.token}
+          userId={userId}
+        />
       )}
 
       {page === 'notifications' && (
@@ -273,11 +320,23 @@ export default function App() {
         />
       )}
 
+      {page === 'scan' && (
+        <QrScanPage
+          userId={userId}
+          isLoggedIn={!!auth}
+          onLoginClick={() => setShowLogin(true)}
+          onPointsEarned={handleQrPointsEarned}
+          onBack={() => setPage('main')}
+        />
+      )}
+
       {page === 'mypage' && (
         <MyPage
           points={points}
           nickname={nickname}
           shareHistory={shareHistory}
+          quizHistory={quizHistory}
+          visitHistory={visitHistory}
           isLoggedIn={!!auth}
           onLoginClick={() => setShowLogin(true)}
           onLogout={handleLogout}
@@ -292,7 +351,20 @@ export default function App() {
       )}
 
       {showBottomNav && (
-        <BottomNav currentPage={page} onNavigate={handleNavigate} />
+        <BottomNav
+          currentPage={page}
+          onNavigate={handleNavigate}
+          isLoggedIn={!!auth}
+          userRole={userRole}
+        />
+      )}
+
+      {showScratchCard && scratchFlyer && (
+        <ScratchCard
+          flyer={scratchFlyer}
+          onComplete={handleScratchComplete}
+          onClose={handleScratchClose}
+        />
       )}
 
       {showPointAnim && (

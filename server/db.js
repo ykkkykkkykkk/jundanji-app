@@ -97,6 +97,38 @@ db.exec(`
     auth       TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
   );
+
+  CREATE TABLE IF NOT EXISTS quizzes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    flyer_id    INTEGER NOT NULL REFERENCES flyers(id) ON DELETE CASCADE,
+    question    TEXT NOT NULL,
+    options     TEXT NOT NULL,
+    answer_idx  INTEGER NOT NULL,
+    point       INTEGER NOT NULL DEFAULT 10,
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS quiz_attempts (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        INTEGER NOT NULL REFERENCES users(id),
+    flyer_id       INTEGER NOT NULL REFERENCES flyers(id),
+    quiz_id        INTEGER NOT NULL REFERENCES quizzes(id),
+    selected_idx   INTEGER NOT NULL,
+    is_correct     INTEGER NOT NULL DEFAULT 0,
+    points_earned  INTEGER NOT NULL DEFAULT 0,
+    attempted_at   TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    UNIQUE(user_id, flyer_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS visit_verifications (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        INTEGER NOT NULL REFERENCES users(id),
+    flyer_id       INTEGER NOT NULL REFERENCES flyers(id),
+    points_earned  INTEGER NOT NULL DEFAULT 0,
+    verified_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    UNIQUE(user_id, flyer_id)
+  );
 `)
 
 // ==================== 마이그레이션 ====================
@@ -104,6 +136,10 @@ db.exec(`
 try { db.exec(`ALTER TABLE flyers ADD COLUMN image_url TEXT`) } catch (_) {}
 try { db.exec(`ALTER TABLE users ADD COLUMN provider TEXT`) } catch (_) {}
 try { db.exec(`ALTER TABLE users ADD COLUMN provider_id TEXT`) } catch (_) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`) } catch (_) {}
+try { db.exec(`ALTER TABLE flyers ADD COLUMN qr_point INTEGER NOT NULL DEFAULT 0`) } catch (_) {}
+try { db.exec(`ALTER TABLE flyers ADD COLUMN owner_id INTEGER REFERENCES users(id)`) } catch (_) {}
+try { db.exec(`ALTER TABLE flyers ADD COLUMN qr_code TEXT`) } catch (_) {}
 
 // ==================== 시드 데이터 ====================
 
@@ -416,7 +452,30 @@ const seedFlyers = () => {
   ]
   notifications.forEach(n => insertNotification.run(n.title, n.body, n.emoji))
 
-  console.log('[DB] 시드 데이터 삽입 완료 (전단지 20개, 알림 5개)')
+  // 퀴즈 시드 데이터 (전단지 1~3번에 각 3개씩)
+  const insertQuiz = db.prepare(`
+    INSERT INTO quizzes (flyer_id, question, options, answer_idx, point, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `)
+  const quizSeed = [
+    // 이마트 (flyer 1)
+    { flyerId: 1, question: '이마트 주말 특가에서 한우 1등급 불고기 200g의 할인 가격은?', options: ['15,000원', '22,000원', '25,000원', '30,000원'], answerIdx: 1, point: 30 },
+    { flyerId: 1, question: '이마트 전단지에서 코카콜라 1.5L 6개입의 세일가는?', options: ['3,900원', '4,900원', '5,900원', '6,900원'], answerIdx: 2, point: 20 },
+    { flyerId: 1, question: '이마트 주말 특가 전단지의 최대 할인율은?', options: ['30%', '40%', '50%', '60%'], answerIdx: 2, point: 30 },
+    // 스타벅스 (flyer 9)
+    { flyerId: 9, question: '스타벅스 봄 신메뉴 중 벚꽃 블로섬 라떼 Tall의 할인가는?', options: ['4,440원', '5,440원', '5,800원', '6,240원'], answerIdx: 1, point: 20 },
+    { flyerId: 9, question: '스타벅스 봄 한정 메뉴의 유효기간은 언제까지?', options: ['3월 31일', '4월 15일', '4월 30일', '5월 31일'], answerIdx: 2, point: 20 },
+    { flyerId: 9, question: '스타벅스 리저브 체리 블로섬 티 Tall의 원래 가격은?', options: ['6,800원', '7,200원', '7,800원', '8,200원'], answerIdx: 2, point: 30 },
+    // 교촌치킨 (flyer 15)
+    { flyerId: 15, question: '교촌치킨 봄맞이 할인에서 허니오리지날 한마리의 할인가는?', options: ['15,000원', '17,000원', '18,000원', '19,000원'], answerIdx: 1, point: 30 },
+    { flyerId: 15, question: '교촌치킨 콤보 세트의 할인 금액은?', options: ['2,000원', '3,000원', '4,000원', '5,000원'], answerIdx: 2, point: 20 },
+    { flyerId: 15, question: '교촌치킨 전단지의 최대 할인 쿠폰 금액은?', options: ['1,000원', '2,000원', '3,000원', '5,000원'], answerIdx: 2, point: 30 },
+  ]
+  quizSeed.forEach((q, idx) => {
+    insertQuiz.run(q.flyerId, q.question, JSON.stringify(q.options), q.answerIdx, q.point, idx % 3)
+  })
+
+  console.log('[DB] 시드 데이터 삽입 완료 (전단지 20개, 알림 5개, 퀴즈 9개)')
 }
 
 seedFlyers()

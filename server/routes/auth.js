@@ -13,12 +13,14 @@ function signToken(userId) {
 }
 
 // 회원가입
-// POST /api/auth/register  { email, password, nickname }
+// POST /api/auth/register  { email, password, nickname, role }
 router.post('/register', (req, res) => {
-  const { email, password, nickname } = req.body
+  const { email, password, nickname, role } = req.body
   if (!email || !password || !nickname) {
     return res.status(400).json({ ok: false, message: 'email, password, nickname 필수입니다.' })
   }
+
+  const userRole = (role === 'business') ? 'business' : 'user'
 
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email)
   if (existing) {
@@ -27,11 +29,11 @@ router.post('/register', (req, res) => {
 
   const hash = bcrypt.hashSync(password, 10)
   const { lastInsertRowid: userId } = db.prepare(
-    'INSERT INTO users (email, nickname, password_hash) VALUES (?, ?, ?)'
-  ).run(email, nickname, hash)
+    'INSERT INTO users (email, nickname, password_hash, role) VALUES (?, ?, ?, ?)'
+  ).run(email, nickname, hash, userRole)
 
   const token = signToken(userId)
-  res.status(201).json({ ok: true, data: { token, userId, nickname } })
+  res.status(201).json({ ok: true, data: { token, userId, nickname, role: userRole } })
 })
 
 // 로그인
@@ -52,15 +54,15 @@ router.post('/login', (req, res) => {
   }
 
   const token = signToken(user.id)
-  res.json({ ok: true, data: { token, userId: user.id, nickname: user.nickname, points: user.points } })
+  res.json({ ok: true, data: { token, userId: user.id, nickname: user.nickname, points: user.points, role: user.role || 'user' } })
 })
 
 // 내 정보 조회
 // GET /api/users/me  (Authorization: Bearer <token>)
 router.get('/me', authMiddleware, (req, res) => {
-  const user = db.prepare('SELECT id, email, nickname, points, created_at FROM users WHERE id = ?').get(req.user.userId)
+  const user = db.prepare('SELECT id, email, nickname, points, role, created_at FROM users WHERE id = ?').get(req.user.userId)
   if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
-  res.json({ ok: true, data: user })
+  res.json({ ok: true, data: { ...user, role: user.role || 'user' } })
 })
 
 // 닉네임 변경

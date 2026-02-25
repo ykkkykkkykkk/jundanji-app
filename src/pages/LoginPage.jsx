@@ -6,6 +6,7 @@ export default function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
+  const [role, setRole] = useState('user')  // 'user' | 'business'
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -19,12 +20,13 @@ export default function LoginPage({ onLogin }) {
         data = await login(email, password)
       } else {
         if (!nickname.trim()) { setError('닉네임을 입력해주세요.'); setLoading(false); return }
-        data = await register(email, password, nickname.trim())
+        data = await register(email, password, nickname.trim(), role)
       }
       localStorage.setItem('token', data.token)
       localStorage.setItem('userId', String(data.userId))
       localStorage.setItem('nickname', data.nickname)
-      onLogin({ token: data.token, userId: data.userId, nickname: data.nickname, points: data.points ?? 0 })
+      localStorage.setItem('role', data.role || 'user')
+      onLogin({ token: data.token, userId: data.userId, nickname: data.nickname, points: data.points ?? 0, role: data.role || 'user' })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -51,14 +53,32 @@ export default function LoginPage({ onLogin }) {
 
         <form className="login-form" onSubmit={handleSubmit}>
           {mode === 'register' && (
-            <input
-              className="login-input"
-              type="text"
-              placeholder="닉네임"
-              value={nickname}
-              onChange={e => setNickname(e.target.value)}
-              required
-            />
+            <>
+              <input
+                className="login-input"
+                type="text"
+                placeholder="닉네임"
+                value={nickname}
+                onChange={e => setNickname(e.target.value)}
+                required
+              />
+              <div className="role-selector">
+                <button
+                  type="button"
+                  className={`role-btn ${role === 'user' ? 'role-btn-active' : ''}`}
+                  onClick={() => setRole('user')}
+                >
+                  👤 일반 회원
+                </button>
+                <button
+                  type="button"
+                  className={`role-btn ${role === 'business' ? 'role-btn-active' : ''}`}
+                  onClick={() => setRole('business')}
+                >
+                  🏢 사업자 회원
+                </button>
+              </div>
+            </>
           )}
           <input
             className="login-input"

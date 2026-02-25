@@ -12,7 +12,7 @@ const GIFT_OPTIONS = [
   { label: '치킨 할인 쿠폰', points: 500, emoji: '🍗' },
 ]
 
-export default function MyPage({ points, nickname, shareHistory, isLoggedIn, onLoginClick, onLogout, onNicknameChange, token, userId, onPointsChange, bookmarkedFlyers = [], onBookmarkToggle, onFlyerClick }) {
+export default function MyPage({ points, nickname, shareHistory, quizHistory = [], visitHistory = [], isLoggedIn, onLoginClick, onLogout, onNicknameChange, token, userId, onPointsChange, bookmarkedFlyers = [], onBookmarkToggle, onFlyerClick }) {
   const totalShare = shareHistory.length
   const [editingNick, setEditingNick] = useState(false)
   const [nickInput, setNickInput] = useState(nickname)
@@ -20,6 +20,7 @@ export default function MyPage({ points, nickname, shareHistory, isLoggedIn, onL
   const [showGift, setShowGift] = useState(false)
   const [giftMsg, setGiftMsg] = useState('')
   const [showBookmarks, setShowBookmarks] = useState(true)
+  const [historyTab, setHistoryTab] = useState('share')  // 'share' | 'quiz' | 'visit'
 
   const handleGiftExchange = async (gift) => {
     if (points < gift.points) { setGiftMsg('포인트가 부족합니다.'); return }
@@ -46,6 +47,10 @@ export default function MyPage({ points, nickname, shareHistory, isLoggedIn, onL
       setNickLoading(false)
     }
   }
+
+  const quizPoints = quizHistory.reduce((sum, h) => sum + h.pointsEarned, 0)
+  const visitPoints = visitHistory.reduce((sum, h) => sum + h.pointsEarned, 0)
+  const sharePoints = shareHistory.reduce((sum, h) => sum + (h.points || 0), 0)
 
   return (
     <div className="page">
@@ -104,16 +109,16 @@ export default function MyPage({ points, nickname, shareHistory, isLoggedIn, onL
 
           <div className="point-stats">
             <div className="stat-item">
-              <span className="stat-value">{totalShare}</span>
-              <span className="stat-label">총 공유 횟수</span>
+              <span className="stat-value">{sharePoints.toLocaleString()}</span>
+              <span className="stat-label">공유 포인트</span>
             </div>
             <div className="stat-item" style={{ borderLeft: '1px solid rgba(255,255,255,0.2)', borderRight: '1px solid rgba(255,255,255,0.2)' }}>
-              <span className="stat-value">{points.toLocaleString()}</span>
-              <span className="stat-label">총 적립 포인트</span>
+              <span className="stat-value">{quizPoints.toLocaleString()}</span>
+              <span className="stat-label">퀴즈 포인트</span>
             </div>
             <div className="stat-item">
-              <span className="stat-value">0</span>
-              <span className="stat-label">사용 포인트</span>
+              <span className="stat-value">{visitPoints.toLocaleString()}</span>
+              <span className="stat-label">방문 포인트</span>
             </div>
           </div>
         </div>
@@ -204,31 +209,104 @@ export default function MyPage({ points, nickname, shareHistory, isLoggedIn, onL
         </div>
       )}
 
-      {/* 공유 내역 */}
+      {/* 내역 탭 */}
       <div className="history-section">
-        <div className="history-title">공유 내역</div>
+        <div className="history-tabs">
+          <button className={`history-tab ${historyTab === 'share' ? 'active' : ''}`} onClick={() => setHistoryTab('share')}>
+            📤 공유 내역
+          </button>
+          <button className={`history-tab ${historyTab === 'quiz' ? 'active' : ''}`} onClick={() => setHistoryTab('quiz')}>
+            ❓ 퀴즈 내역
+          </button>
+          <button className={`history-tab ${historyTab === 'visit' ? 'active' : ''}`} onClick={() => setHistoryTab('visit')}>
+            📍 방문 내역
+          </button>
+        </div>
 
-        {shareHistory.length === 0 ? (
-          <div className="empty-history">
-            <span className="empty-icon">📭</span>
-            <p className="empty-text">아직 공유 내역이 없어요.<br />전단지를 공유하고 포인트를 받아보세요!</p>
-          </div>
-        ) : (
-          <div className="history-list">
-            {shareHistory.map((item, i) => (
-              <div key={i} className="history-card">
-                <div className="history-emoji" style={{ background: item.storeColor + '22' }}>
-                  {item.storeEmoji}
-                </div>
-                <div className="history-info">
-                  <div className="history-store">{item.storeName}</div>
-                  <div className="history-title-text">{item.title}</div>
-                  <div className="history-date">{item.sharedAt}</div>
-                </div>
-                <div className="history-point">+{item.points}P</div>
+        {/* 공유 내역 */}
+        {historyTab === 'share' && (
+          <>
+            {shareHistory.length === 0 ? (
+              <div className="empty-history">
+                <span className="empty-icon">📭</span>
+                <p className="empty-text">아직 공유 내역이 없어요.<br />전단지를 공유하고 포인트를 받아보세요!</p>
               </div>
-            ))}
-          </div>
+            ) : (
+              <div className="history-list">
+                {shareHistory.map((item, i) => (
+                  <div key={i} className="history-card">
+                    <div className="history-emoji" style={{ background: item.storeColor + '22' }}>
+                      {item.storeEmoji}
+                    </div>
+                    <div className="history-info">
+                      <div className="history-store">{item.storeName}</div>
+                      <div className="history-title-text">{item.title}</div>
+                      <div className="history-date">{item.sharedAt}</div>
+                    </div>
+                    <div className="history-point">+{item.points}P</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 퀴즈 내역 */}
+        {historyTab === 'quiz' && (
+          <>
+            {quizHistory.length === 0 ? (
+              <div className="empty-history">
+                <span className="empty-icon">❓</span>
+                <p className="empty-text">아직 퀴즈 참여 내역이 없어요.<br />전단지를 열고 퀴즈에 도전해보세요!</p>
+              </div>
+            ) : (
+              <div className="history-list">
+                {quizHistory.map((item, i) => (
+                  <div key={i} className="history-card">
+                    <div className="history-emoji" style={{ background: item.isCorrect ? '#E8F5E9' : '#FFEBEE' }}>
+                      {item.isCorrect ? '⭕' : '❌'}
+                    </div>
+                    <div className="history-info">
+                      <div className="history-store">{item.storeEmoji} {item.storeName}</div>
+                      <div className="history-title-text">{item.question.length > 30 ? item.question.slice(0, 30) + '...' : item.question}</div>
+                      <div className="history-date">{item.attemptedAt}</div>
+                    </div>
+                    <div className={`history-point ${item.isCorrect ? '' : 'history-point-zero'}`}>
+                      {item.isCorrect ? `+${item.pointsEarned}P` : '0P'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 방문 내역 */}
+        {historyTab === 'visit' && (
+          <>
+            {visitHistory.length === 0 ? (
+              <div className="empty-history">
+                <span className="empty-icon">📍</span>
+                <p className="empty-text">아직 방문 인증 내역이 없어요.<br />매장 QR코드를 스캔해 보너스 포인트를 받으세요!</p>
+              </div>
+            ) : (
+              <div className="history-list">
+                {visitHistory.map((item, i) => (
+                  <div key={i} className="history-card">
+                    <div className="history-emoji" style={{ background: '#E3F2FD' }}>
+                      {item.storeEmoji || '📍'}
+                    </div>
+                    <div className="history-info">
+                      <div className="history-store">{item.storeName}</div>
+                      <div className="history-title-text">{item.flyerTitle}</div>
+                      <div className="history-date">{item.verifiedAt}</div>
+                    </div>
+                    <div className="history-point">+{item.pointsEarned}P</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

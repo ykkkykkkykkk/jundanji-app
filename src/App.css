@@ -1766,3 +1766,722 @@ body {
   from { transform: translateY(0); opacity: 0.5; }
   to   { transform: translateY(-10px); opacity: 1; }
 }
+
+/* ==================== 복권 긁기 (ScratchCard) ==================== */
+
+.scratch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayFadeIn 0.3s ease;
+}
+.scratch-overlay.scratch-revealed {
+  animation: overlayFadeIn 0.3s ease;
+}
+.scratch-container {
+  position: relative;
+  width: 360px;
+  max-width: 92vw;
+}
+.scratch-close-btn {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10;
+}
+.scratch-progress {
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+.scratch-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #FFB800, #FF4757);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+.scratch-card-inner {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.scratch-preview {
+  width: 340px;
+  height: 400px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  box-sizing: border-box;
+}
+.scratch-preview-img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.scratch-preview-emoji {
+  font-size: 64px;
+}
+.scratch-preview-store {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.scratch-preview-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-align: center;
+}
+.scratch-preview-sub {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.scratch-preview-point {
+  display: inline-block;
+  background: linear-gradient(135deg, #FFB800, #FF8C00);
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  margin-top: 8px;
+}
+.scratch-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  touch-action: none;
+  border-radius: 16px;
+  transition: opacity 0.8s ease;
+}
+.scratch-canvas-hide {
+  opacity: 0;
+  pointer-events: none;
+}
+.scratch-complete-msg {
+  text-align: center;
+  color: #FFB800;
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 16px;
+  animation: fadeInUp 0.4s ease;
+}
+
+/* ==================== 퀴즈 모달 (QuizModal) ==================== */
+
+.quiz-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 450;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: overlayFadeIn 0.3s ease;
+}
+.quiz-modal {
+  background: var(--bg-card);
+  width: 100%;
+  max-width: 430px;
+  border-radius: 20px 20px 0 0;
+  padding: 28px 20px 36px;
+  animation: modalSlideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes modalSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.quiz-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.quiz-badge {
+  background: #FF4757;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+.quiz-point-badge {
+  background: linear-gradient(135deg, #FFB800, #FF8C00);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+.quiz-question {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.quiz-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 2px solid var(--border-main);
+  border-radius: 12px;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+.quiz-option:active {
+  transform: scale(0.98);
+}
+.quiz-option-selected {
+  border-color: #FF4757;
+  background: #FF475712;
+}
+.quiz-option-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-input);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+.quiz-option-selected .quiz-option-num {
+  background: #FF4757;
+  color: #fff;
+}
+.quiz-option-text {
+  font-size: 15px;
+  color: var(--text-primary);
+}
+.quiz-loading {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+/* 퀴즈 결과 */
+.quiz-result-modal {
+  text-align: center;
+  padding: 40px 20px 36px;
+}
+.quiz-result-icon {
+  font-size: 56px;
+  margin-bottom: 12px;
+}
+.quiz-result-text {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.quiz-result-points {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFB800, #FF8C00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+}
+.quiz-result-answer {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+.quiz-close-btn {
+  display: inline-block;
+  padding: 12px 40px;
+  background: linear-gradient(135deg, #FF4757, #FF6B6B);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+/* 퀴즈 참여 완료 배지 */
+.quiz-attempted-badge {
+  margin: 0 16px 8px;
+  padding: 10px 16px;
+  background: #E8F5E9;
+  color: #2E7D32;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  text-align: center;
+}
+[data-theme="dark"] .quiz-attempted-badge {
+  background: #1B5E20;
+  color: #A5D6A7;
+}
+
+/* ==================== QR 스캐너 ==================== */
+
+.qr-scanner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.qr-scanner-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(0,0,0,0.8);
+  z-index: 10;
+}
+.qr-scanner-header .back-btn {
+  color: #fff;
+}
+.qr-scanner-title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+}
+.qr-scanner-view {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.qr-scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.qr-scanner-frame {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.qr-frame-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #FFB800;
+}
+.qr-frame-corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
+.qr-frame-corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
+.qr-frame-corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
+.qr-frame-corner.br { bottom: 0; right: 0; border-left: none; border-top: none; }
+.qr-scanner-hint {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+.qr-scanner-error {
+  padding: 20px;
+  color: #FF4757;
+  text-align: center;
+  font-size: 15px;
+}
+.qr-manual-section {
+  padding: 24px 20px;
+  background: var(--bg-card);
+}
+.qr-manual-label {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.qr-manual-row {
+  display: flex;
+  gap: 8px;
+}
+.qr-manual-input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 2px solid var(--border-main);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.qr-manual-btn {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #FF4757, #FF6B6B);
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* QR 스캔 결과 */
+.qr-scan-page { padding-bottom: 0 !important; }
+.qr-result-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+.qr-result-back {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+}
+.qr-result-success, .qr-result-error {
+  text-align: center;
+  animation: fadeInUp 0.4s ease;
+}
+.qr-result-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+.qr-result-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.qr-result-store {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.qr-result-flyer {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+.qr-result-points {
+  font-size: 32px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFB800, #FF8C00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.qr-result-total {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+.qr-result-btn {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 0 auto 10px;
+  padding: 14px;
+  background: linear-gradient(135deg, #FF4757, #FF6B6B);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.qr-retry-btn {
+  background: linear-gradient(135deg, #FFB800, #FF8C00);
+}
+.qr-back-btn {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+/* ==================== QR 디스플레이 (사업자) ==================== */
+
+.qr-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+}
+.qr-display-canvas {
+  border: 4px solid var(--border-main);
+  border-radius: 12px;
+}
+.qr-display-info {
+  text-align: center;
+}
+.qr-display-store {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.qr-display-point {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+.qr-display-code {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-muted);
+  word-break: break-all;
+  text-align: center;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border-radius: 8px;
+  width: 100%;
+}
+.qr-display-actions {
+  display: flex;
+  gap: 10px;
+}
+.qr-action-btn {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #FF4757, #FF6B6B);
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.qr-display-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 20px;
+}
+.qr-empty {
+  text-align: center;
+  padding: 40px 20px;
+}
+.qr-empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.qr-empty p {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+/* ==================== 사업자 대시보드 ==================== */
+
+.biz-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px 0;
+  border-bottom: 1px solid var(--border-main);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.biz-tabs::-webkit-scrollbar { display: none; }
+.biz-tab {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.biz-tab-active {
+  color: #FF4757;
+  border-bottom-color: #FF4757;
+}
+.biz-hint {
+  padding: 12px 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.biz-badge-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.biz-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 8px;
+}
+.biz-badge-quiz { background: #E3F2FD; color: #1565C0; }
+.biz-badge-qr { background: #E8F5E9; color: #2E7D32; }
+.biz-badge-empty { background: var(--bg-tag); color: var(--text-muted); }
+[data-theme="dark"] .biz-badge-quiz { background: #0D47A1; color: #90CAF9; }
+[data-theme="dark"] .biz-badge-qr { background: #1B5E20; color: #A5D6A7; }
+
+/* 퀴즈 에디터 */
+.quiz-editor { padding-bottom: 100px; }
+.quiz-edit-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-main);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.quiz-edit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.quiz-edit-num {
+  font-size: 16px;
+  font-weight: 800;
+  color: #FF4757;
+}
+.quiz-edit-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+.quiz-edit-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.quiz-edit-option input[type="radio"] {
+  accent-color: #FF4757;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.quiz-edit-point {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.quiz-edit-point label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* 통계 */
+.biz-stats {
+  padding: 16px;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.stats-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-main);
+  border-radius: 14px;
+  padding: 20px 16px;
+  text-align: center;
+}
+.stats-card-wide {
+  grid-column: 1 / -1;
+}
+.stats-card-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.stats-card-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.stats-card-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* ==================== 마이페이지 히스토리 탭 ==================== */
+
+.history-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-main);
+  margin-bottom: 12px;
+}
+.history-tab {
+  flex: 1;
+  padding: 12px 8px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.history-tab.active {
+  color: #FF4757;
+  border-bottom-color: #FF4757;
+}
+.history-point-zero {
+  color: var(--text-muted) !important;
+}
+
+/* ==================== 회원가입 역할 선택 ==================== */
+
+.role-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.role-btn {
+  flex: 1;
+  padding: 12px 8px;
+  border: 2px solid var(--border-main);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.role-btn-active {
+  border-color: #FF4757;
+  background: #FF475712;
+  color: #FF4757;
+}
