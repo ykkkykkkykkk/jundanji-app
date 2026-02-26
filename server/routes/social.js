@@ -27,58 +27,36 @@ function findOrCreateSocialUser(provider, providerId, nickname) {
 
 // ─────────────────────────────── 카카오 ───────────────────────────────
 
-// GET /api/auth/kakao  → 카카오 인증 페이지로 리다이렉트
-router.get('/kakao', (req, res) => {
-  if (!process.env.KAKAO_CLIENT_ID) {
-    return res.status(501).json({ ok: false, message: 'KAKAO_CLIENT_ID 미설정' })
+// POST /api/auth/kakao/token  → 프론트에서 받은 카카오 access_token으로 로그인
+router.post('/kakao/token', async (req, res) => {
+  const { accessToken } = req.body
+  if (!accessToken) {
+    return res.status(400).json({ ok: false, message: 'accessToken 필수입니다.' })
   }
-  const params = new URLSearchParams({
-    response_type: 'code',
-    client_id: process.env.KAKAO_CLIENT_ID,
-    redirect_uri: process.env.KAKAO_REDIRECT_URI,
-  })
-  res.redirect(`https://kauth.kakao.com/oauth/authorize?${params}`)
-})
-
-// GET /api/auth/kakao/callback  → 카카오 인가 코드 수신
-router.get('/kakao/callback', async (req, res) => {
-  const { code } = req.query
-  if (!code) return res.redirect(`${FRONTEND_URL}?error=kakao_denied`)
 
   try {
-    // 1. 액세스 토큰 발급
-    const tokenRes = await fetch('https://kauth.kakao.com/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: process.env.KAKAO_CLIENT_ID,
-        redirect_uri: process.env.KAKAO_REDIRECT_URI,
-        code,
-      }),
-    })
-    const tokenData = await tokenRes.json()
-    if (!tokenData.access_token) throw new Error('카카오 토큰 발급 실패: ' + JSON.stringify(tokenData))
-
-    // 2. 사용자 프로필 조회
+    // 카카오 사용자 프로필 조회
     const profileRes = await fetch('https://kapi.kakao.com/v2/user/me', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
     })
     const profile = await profileRes.json()
+
+    if (!profile.id) throw new Error('카카오 프로필 조회 실패')
 
     const kakaoId = String(profile.id)
     const nickname = profile.kakao_account?.profile?.nickname || `카카오유저${kakaoId.slice(-4)}`
 
-    // 3. DB 유저 찾기 / 생성
+    // DB 유저 찾기 / 생성
     const { user, isNew } = findOrCreateSocialUser('kakao', kakaoId, nickname)
 
     const token = signToken(user.id)
-    res.redirect(
-      `${FRONTEND_URL}?token=${token}&userId=${user.id}&nickname=${encodeURIComponent(user.nickname)}&role=${user.role || 'user'}&isNew=${isNew}`
-    )
+    res.json({
+      ok: true,
+      data: { token, userId: user.id, nickname: user.nickname, role: user.role || 'user', isNew }
+    })
   } catch (e) {
     console.error('[카카오 로그인 오류]', e.message)
-    res.redirect(`${FRONTEND_URL}?error=kakao_failed&reason=${encodeURIComponent(e.message)}`)
+    res.status(500).json({ ok: false, message: '카카오 로그인 실패: ' + e.message })
   }
 })
 

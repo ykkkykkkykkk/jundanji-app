@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { login, register } from '../api/index'
+
+const KAKAO_KEY = import.meta.env.VITE_KAKAO_KEY
 
 export default function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('login')  // 'login' | 'register'
@@ -9,6 +11,49 @@ export default function LoginPage({ onLogin }) {
   const [role, setRole] = useState('user')  // 'user' | 'business'
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (window.Kakao && !window.Kakao.isInitialized() && KAKAO_KEY) {
+      window.Kakao.init(KAKAO_KEY)
+    }
+  }, [])
+
+  const handleKakaoLogin = () => {
+    if (!window.Kakao || !window.Kakao.isInitialized()) {
+      setError('카카오 SDK 초기화 실패')
+      return
+    }
+    setLoading(true)
+    setError('')
+    window.Kakao.Auth.login({
+      success: async (authObj) => {
+        try {
+          const res = await fetch('/api/auth/kakao/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accessToken: authObj.access_token }),
+          })
+          const json = await res.json()
+          if (!json.ok) throw new Error(json.message)
+          const data = json.data
+          localStorage.setItem('token', data.token)
+          localStorage.setItem('userId', String(data.userId))
+          localStorage.setItem('nickname', data.nickname)
+          localStorage.setItem('role', data.role || 'user')
+          if (data.isNew) localStorage.setItem('needRoleSelection', 'true')
+          onLogin({ token: data.token, userId: data.userId, nickname: data.nickname, points: 0, role: data.role || 'user' })
+        } catch (err) {
+          setError(err.message)
+        } finally {
+          setLoading(false)
+        }
+      },
+      fail: (err) => {
+        setError('카카오 로그인 실패')
+        setLoading(false)
+      },
+    })
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -108,12 +153,12 @@ export default function LoginPage({ onLogin }) {
           <span>또는 소셜 계정으로 시작</span>
         </div>
 
-        <a className="social-login-btn social-kakao" href="/api/auth/kakao">
+        <button className="social-login-btn social-kakao" onClick={handleKakaoLogin} disabled={loading}>
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
             <path d="M9 1.5C4.86 1.5 1.5 4.14 1.5 7.38c0 2.07 1.38 3.9 3.48 4.95l-.87 3.24c-.06.21.18.39.36.27L8.43 13.5c.18.03.36.03.57.03 4.14 0 7.5-2.64 7.5-5.88C16.5 4.14 13.14 1.5 9 1.5z" fill="#3A1D1D"/>
           </svg>
           카카오로 시작하기
-        </a>
+        </button>
 
         <a className="social-login-btn social-google" href="/api/auth/google">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
