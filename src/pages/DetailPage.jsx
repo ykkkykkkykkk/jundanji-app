@@ -15,7 +15,7 @@ function isExpired(validUntil) {
   return new Date(y, m - 1, d + 1) <= new Date()
 }
 
-export default function DetailPage({ flyer, onBack, isBookmarked, onBookmarkToggle, userId, onQuizPoints }) {
+export default function DetailPage({ flyer, onBack, isBookmarked, onBookmarkToggle, userId, userRole, onQuizPoints }) {
   const expired = isExpired(flyer.validUntil)
   const [quiz, setQuiz] = useState(null)
   const [showQuiz, setShowQuiz] = useState(false)
@@ -23,7 +23,7 @@ export default function DetailPage({ flyer, onBack, isBookmarked, onBookmarkTogg
   const [quizAttempted, setQuizAttempted] = useState(false)
 
   useEffect(() => {
-    if (!userId || !flyer.id) return
+    if (!userId || !flyer.id || userRole === 'business') return
     getRandomQuiz(flyer.id, userId).then(res => {
       if (res.attempted) {
         setQuizAttempted(true)
@@ -32,11 +32,11 @@ export default function DetailPage({ flyer, onBack, isBookmarked, onBookmarkTogg
         setShowQuiz(true)
       }
     }).catch(() => {})
-  }, [flyer.id, userId])
+  }, [flyer.id, userId, userRole])
 
-  const handleQuizAnswer = async (selectedIdx) => {
+  const handleQuizAnswer = async (answer) => {
     try {
-      const result = await submitQuizAnswer(userId, flyer.id, quiz.quizId, selectedIdx)
+      const result = await submitQuizAnswer(userId, flyer.id, quiz.quizId, answer)
       setQuizResult(result)
       if (result.isCorrect && onQuizPoints) {
         onQuizPoints(result.earnedPoints, result.totalPoints)

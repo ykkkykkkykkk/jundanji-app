@@ -76,4 +76,19 @@ router.patch('/me', authMiddleware, (req, res) => {
   res.json({ ok: true, data: { nickname: nickname.trim() } })
 })
 
+// 역할 변경 (최초 소셜 로그인 시 1회)
+// PATCH /api/users/me/role  { role }
+router.patch('/me/role', authMiddleware, (req, res) => {
+  const { role } = req.body
+  if (!role || !['user', 'business'].includes(role)) {
+    return res.status(400).json({ ok: false, message: "role은 'user' 또는 'business'여야 합니다." })
+  }
+
+  const user = db.prepare('SELECT id, provider, role FROM users WHERE id = ?').get(req.user.userId)
+  if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
+
+  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.user.userId)
+  res.json({ ok: true, data: { role } })
+})
+
 module.exports = router

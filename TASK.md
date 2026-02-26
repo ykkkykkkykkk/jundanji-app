@@ -89,40 +89,86 @@
 
 ---
 
+## v3.0 관리자 어드민 페이지 (2026-02-26) ✅
+
+### 신규 기능
+
+#### 슈퍼 관리자 어드민 대시보드 ✅
+- [x] Vite Multi-Page App 구조 (`admin.html` 별도 엔트리)
+- [x] Tailwind CSS v4 + PostCSS (admin 전용, 기존 CSS 영향 없음)
+- [x] 비밀번호 인증 로그인 (비밀번호: `admin1234`)
+- [x] 클린 라이트 디자인 + 브랜드 오렌지(#FF6B00)
+- [x] 좌측 사이드바 네비게이션
+
+#### 5개 관리 페이지 ✅
+- [x] **대시보드** — 유저수, 전단지수, 포인트 매출, 긁기수 통계 + 최근 활동
+- [x] **전단지 관리** — 전체 전단지 목록, 검색, 상태 필터, 승인/차단
+- [x] **유저 관리** — 전체 유저 목록, 검색, 역할 필터, 정지/해제
+- [x] **포인트 정산** — 출금 신청 목록, 상태 필터, 승인/거절
+- [x] **자영업자 관리** — 자영업자 목록, 가입 승인/거절
+
+### 인프라 변경
+- [x] `users` 테이블에 `status`, `business_approved` 컬럼 추가
+- [x] `flyers` 테이블에 `status` 컬럼 추가
+- [x] 신규 테이블: `withdrawals` (출금 신청)
+- [x] 신규 라우트: `server/routes/admin.js` (10개 엔드포인트)
+- [x] `/admin` URL 리다이렉트 Vite 플러그인
+
+---
+
 ## 파일 구조
 
 ```
 전단지/
+├── admin.html                   # [NEW] 어드민 엔트리 포인트
+├── postcss.config.js            # [NEW] Tailwind PostCSS 설정
 ├── src/
-│   ├── App.jsx                  # 전역 상태, 라우팅, 인증, 긁기/퀴즈/QR 흐름
-│   ├── App.css                  # 전체 스타일 (다크모드 + 신규 기능 CSS)
+│   ├── App.jsx
+│   ├── App.css
 │   ├── api/
-│   │   └── index.js             # API 클라이언트 (퀴즈/QR/사업자 API 추가)
+│   │   └── index.js
 │   ├── components/
-│   │   ├── BottomNav.jsx        # 역할 기반 네비게이션
+│   │   ├── BottomNav.jsx
 │   │   ├── PointAnimation.jsx
 │   │   ├── SplashScreen.jsx
-│   │   ├── ScratchCard.jsx      # [NEW] 복권 긁기 캔버스
-│   │   ├── QuizModal.jsx        # [NEW] 퀴즈 모달
-│   │   ├── QrScanner.jsx        # [NEW] QR 스캐너
-│   │   └── QrDisplay.jsx        # [NEW] QR 표시/다운로드
-│   └── pages/
-│       ├── LoginPage.jsx        # 역할 선택 추가
-│       ├── MainPage.jsx
-│       ├── DetailPage.jsx       # 퀴즈 통합
-│       ├── MyPage.jsx           # 3탭 히스토리
-│       ├── AdminPage.jsx        # [개편] 4탭 사업자 대시보드
-│       ├── QrScanPage.jsx       # [NEW] QR 스캔 전용 페이지
-│       └── NotificationPage.jsx
+│   │   ├── ScratchCard.jsx
+│   │   ├── QuizModal.jsx
+│   │   ├── QrScanner.jsx
+│   │   └── QrDisplay.jsx
+│   ├── pages/
+│   │   ├── LoginPage.jsx
+│   │   ├── MainPage.jsx
+│   │   ├── DetailPage.jsx
+│   │   ├── MyPage.jsx
+│   │   ├── AdminPage.jsx
+│   │   ├── QrScanPage.jsx
+│   │   └── NotificationPage.jsx
+│   └── admin/                   # [NEW] 관리자 앱
+│       ├── main.jsx
+│       ├── index.css
+│       ├── App.jsx
+│       ├── api.js
+│       ├── components/
+│       │   ├── Sidebar.jsx
+│       │   ├── StatsCard.jsx
+│       │   └── DataTable.jsx
+│       └── pages/
+│           ├── LoginPage.jsx
+│           ├── DashboardPage.jsx
+│           ├── FlyersPage.jsx
+│           ├── UsersPage.jsx
+│           ├── PointsPage.jsx
+│           └── BusinessPage.jsx
 ├── server/
-│   ├── db.js                    # 스키마 확장 (퀴즈/QR 테이블)
-│   ├── app.js                   # 라우터 3개 추가
+│   ├── db.js                    # 스키마 확장 (admin 관련)
+│   ├── app.js                   # admin 라우터 추가
 │   ├── routes/
-│   │   ├── quiz.js              # [NEW] 퀴즈 API
-│   │   ├── qr.js                # [NEW] QR API
-│   │   ├── business.js          # [NEW] 사업자 API
-│   │   ├── flyers.js            # qr_point/owner_id 추가
-│   │   ├── auth.js              # role 필드 추가
+│   │   ├── admin.js             # [NEW] 관리자 API
+│   │   ├── quiz.js
+│   │   ├── qr.js
+│   │   ├── business.js
+│   │   ├── flyers.js
+│   │   ├── auth.js
 │   │   ├── share.js
 │   │   ├── notifications.js
 │   │   ├── bookmarks.js
@@ -145,4 +191,7 @@ cd server && npm run dev   # http://localhost:3001
 
 # 터미널 2 - 프론트엔드
 npm run dev               # http://localhost:5173
+
+# 관리자 페이지 접속
+# http://localhost:5173/admin → 비밀번호: admin1234
 ```

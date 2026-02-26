@@ -102,8 +102,7 @@ db.exec(`
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     flyer_id    INTEGER NOT NULL REFERENCES flyers(id) ON DELETE CASCADE,
     question    TEXT NOT NULL,
-    options     TEXT NOT NULL,
-    answer_idx  INTEGER NOT NULL,
+    answer      TEXT NOT NULL DEFAULT '',
     point       INTEGER NOT NULL DEFAULT 10,
     sort_order  INTEGER NOT NULL DEFAULT 0,
     created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
@@ -139,6 +138,39 @@ try { db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'`) 
 try { db.exec(`ALTER TABLE flyers ADD COLUMN qr_point INTEGER NOT NULL DEFAULT 0`) } catch (_) {}
 try { db.exec(`ALTER TABLE flyers ADD COLUMN owner_id INTEGER REFERENCES users(id)`) } catch (_) {}
 try { db.exec(`ALTER TABLE flyers ADD COLUMN qr_code TEXT`) } catch (_) {}
+
+// ==================== 어드민 관련 마이그레이션 ====================
+try { db.exec(`ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`) } catch (_) {}
+try { db.exec(`ALTER TABLE users ADD COLUMN business_approved INTEGER NOT NULL DEFAULT 0`) } catch (_) {}
+try { db.exec(`ALTER TABLE flyers ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'`) } catch (_) {}
+
+// ==================== 자영업자 예산 / 조회수 마이그레이션 ====================
+try { db.exec(`ALTER TABLE users ADD COLUMN point_budget INTEGER NOT NULL DEFAULT 0`) } catch (_) {}
+try { db.exec(`ALTER TABLE flyers ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0`) } catch (_) {}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS budget_charges (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id),
+    amount      INTEGER NOT NULL,
+    method      TEXT NOT NULL DEFAULT 'manual',
+    created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+  )
+`)
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS withdrawals (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id),
+    amount          INTEGER NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'pending',
+    bank_name       TEXT,
+    account_number  TEXT,
+    account_holder  TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    processed_at    TEXT
+  )
+`)
 
 // ==================== 시드 데이터 ====================
 
@@ -451,27 +483,27 @@ const seedFlyers = () => {
   ]
   notifications.forEach(n => insertNotification.run(n.title, n.body, n.emoji))
 
-  // 퀴즈 시드 데이터 (전단지 1~3번에 각 3개씩)
+  // 퀴즈 시드 데이터 (전단지 1~3번에 각 3개씩, 주관식)
   const insertQuiz = db.prepare(`
-    INSERT INTO quizzes (flyer_id, question, options, answer_idx, point, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO quizzes (flyer_id, question, answer, point, sort_order)
+    VALUES (?, ?, ?, ?, ?)
   `)
   const quizSeed = [
     // 이마트 (flyer 1)
-    { flyerId: 1, question: '이마트 주말 특가에서 한우 1등급 불고기 200g의 할인 가격은?', options: ['15,000원', '22,000원', '25,000원', '30,000원'], answerIdx: 1, point: 30 },
-    { flyerId: 1, question: '이마트 전단지에서 코카콜라 1.5L 6개입의 세일가는?', options: ['3,900원', '4,900원', '5,900원', '6,900원'], answerIdx: 2, point: 20 },
-    { flyerId: 1, question: '이마트 주말 특가 전단지의 최대 할인율은?', options: ['30%', '40%', '50%', '60%'], answerIdx: 2, point: 30 },
+    { flyerId: 1, question: '이마트 주말 특가에서 한우 1등급 불고기 200g의 할인 가격은?', answer: '22000', point: 30 },
+    { flyerId: 1, question: '이마트 전단지에서 코카콜라 1.5L 6개입의 세일가는?', answer: '5900', point: 20 },
+    { flyerId: 1, question: '이마트 주말 특가 전단지의 최대 할인율은 몇 퍼센트?', answer: '50', point: 30 },
     // 스타벅스 (flyer 9)
-    { flyerId: 9, question: '스타벅스 봄 신메뉴 중 벚꽃 블로섬 라떼 Tall의 할인가는?', options: ['4,440원', '5,440원', '5,800원', '6,240원'], answerIdx: 1, point: 20 },
-    { flyerId: 9, question: '스타벅스 봄 한정 메뉴의 유효기간은 언제까지?', options: ['3월 31일', '4월 15일', '4월 30일', '5월 31일'], answerIdx: 2, point: 20 },
-    { flyerId: 9, question: '스타벅스 리저브 체리 블로섬 티 Tall의 원래 가격은?', options: ['6,800원', '7,200원', '7,800원', '8,200원'], answerIdx: 2, point: 30 },
+    { flyerId: 9, question: '스타벅스 봄 신메뉴 중 벚꽃 블로섬 라떼 Tall의 할인가는?', answer: '5440', point: 20 },
+    { flyerId: 9, question: '스타벅스 봄 한정 메뉴의 유효기간은 몇 월까지?', answer: '4', point: 20 },
+    { flyerId: 9, question: '스타벅스 리저브 체리 블로섬 티 Tall의 원래 가격은?', answer: '7800', point: 30 },
     // 교촌치킨 (flyer 15)
-    { flyerId: 15, question: '교촌치킨 봄맞이 할인에서 허니오리지날 한마리의 할인가는?', options: ['15,000원', '17,000원', '18,000원', '19,000원'], answerIdx: 1, point: 30 },
-    { flyerId: 15, question: '교촌치킨 콤보 세트의 할인 금액은?', options: ['2,000원', '3,000원', '4,000원', '5,000원'], answerIdx: 2, point: 20 },
-    { flyerId: 15, question: '교촌치킨 전단지의 최대 할인 쿠폰 금액은?', options: ['1,000원', '2,000원', '3,000원', '5,000원'], answerIdx: 2, point: 30 },
+    { flyerId: 15, question: '교촌치킨 봄맞이 할인에서 허니오리지날 한마리의 할인가는?', answer: '17000', point: 30 },
+    { flyerId: 15, question: '교촌치킨 콤보 세트의 할인 금액은 얼마?', answer: '4000', point: 20 },
+    { flyerId: 15, question: '교촌치킨 전단지의 최대 할인 쿠폰 금액은?', answer: '3000', point: 30 },
   ]
   quizSeed.forEach((q, idx) => {
-    insertQuiz.run(q.flyerId, q.question, JSON.stringify(q.options), q.answerIdx, q.point, idx % 3)
+    insertQuiz.run(q.flyerId, q.question, q.answer, q.point, idx % 3)
   })
 
   console.log('[DB] 시드 데이터 삽입 완료 (전단지 20개, 알림 5개, 퀴즈 9개)')

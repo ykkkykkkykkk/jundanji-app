@@ -10,7 +10,7 @@ import BottomNav from './components/BottomNav'
 import PointAnimation from './components/PointAnimation'
 import SplashScreen from './components/SplashScreen'
 import ScratchCard from './components/ScratchCard'
-import { getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory } from './api/index'
+import { getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory, updateUserRole } from './api/index'
 
 const GUEST_USER_ID = 1  // 게스트 사용자
 
@@ -34,13 +34,17 @@ export default function App() {
     const token = params.get('token')
     const userId = params.get('userId')
     const nickname = params.get('nickname')
+    const role = params.get('role') || 'user'
+    const isNew = params.get('isNew') === 'true'
     if (token && userId) {
       const decoded = decodeURIComponent(nickname || '')
       localStorage.setItem('token', token)
       localStorage.setItem('userId', userId)
       localStorage.setItem('nickname', decoded)
+      localStorage.setItem('role', role)
+      if (isNew) localStorage.setItem('needRoleSelection', 'true')
       window.history.replaceState({}, '', '/')
-      return { token, userId: Number(userId), nickname: decoded, role: 'user' }
+      return { token, userId: Number(userId), nickname: decoded, role }
     }
     // 에러 파라미터 처리
     if (params.get('error')) window.history.replaceState({}, '', '/')
@@ -64,6 +68,9 @@ export default function App() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showScratchCard, setShowScratchCard] = useState(false)
   const [scratchFlyer, setScratchFlyer] = useState(null)
+  const [showRoleSelection, setShowRoleSelection] = useState(() => {
+    return localStorage.getItem('needRoleSelection') === 'true'
+  })
   const scrollPosRef = useRef(0)
 
   const userId = auth ? auth.userId : GUEST_USER_ID
@@ -131,6 +138,19 @@ export default function App() {
       await addBookmark(userId, flyer.id).catch(() => {})
       setBookmarkedIds(prev => new Set([...prev, flyer.id]))
       setBookmarkedFlyers(prev => [{ ...flyer }, ...prev])
+    }
+  }
+
+  const handleRoleSelect = async (selectedRole) => {
+    try {
+      await updateUserRole(auth.token, selectedRole)
+      const newAuth = { ...auth, role: selectedRole }
+      setAuth(newAuth)
+      localStorage.setItem('role', selectedRole)
+      localStorage.removeItem('needRoleSelection')
+      setShowRoleSelection(false)
+    } catch (err) {
+      console.error('역할 설정 실패:', err.message)
     }
   }
 
@@ -208,6 +228,7 @@ export default function App() {
           isBookmarked={bookmarkedIds.has(selectedFlyer.id)}
           onBookmarkToggle={() => handleBookmarkToggle(selectedFlyer)}
           userId={userId}
+          userRole={userRole}
           onQuizPoints={handleQuizPoints}
         />
       )}
@@ -230,6 +251,7 @@ export default function App() {
       {page === 'scan' && (
         <QrScanPage
           userId={userId}
+          userRole={userRole}
           isLoggedIn={!!auth}
           onLoginClick={() => setShowLogin(true)}
           onPointsEarned={handleQrPointsEarned}
@@ -276,6 +298,23 @@ export default function App() {
 
       {showPointAnim && (
         <PointAnimation points={earnedPoints} onClose={() => setShowPointAnim(false)} />
+      )}
+
+      {showRoleSelection && (
+        <div className="role-selection-overlay">
+          <div className="role-selection-modal">
+            <h2 className="role-selection-title">회원 유형을 선택하세요</h2>
+            <p className="role-selection-desc">처음 가입하셨군요! 회원 유형을 선택해주세요.</p>
+            <div className="role-selector" style={{ padding: '0 20px' }}>
+              <button className="role-btn" onClick={() => handleRoleSelect('user')}>
+                👤 일반 회원
+              </button>
+              <button className="role-btn" onClick={() => handleRoleSelect('business')}>
+                🏢 사업자 회원
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

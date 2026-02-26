@@ -2,7 +2,7 @@ const isVercel = !!process.env.VERCEL
 
 // 로컬 환경에서만 dotenv 로드 (Vercel은 대시보드 환경변수 사용)
 if (!isVercel) {
-  require('dotenv').config()
+  require('dotenv').config({ path: require('path').join(__dirname, '.env') })
 }
 
 const express = require('express')
@@ -19,6 +19,7 @@ const bookmarksRouter = require('./routes/bookmarks')
 const quizRouter = require('./routes/quiz')
 const qrRouter = require('./routes/qr')
 const businessRouter = require('./routes/business')
+const adminRouter = require('./routes/admin')
 
 const app = express()
 
@@ -52,6 +53,7 @@ app.use('/api', bookmarksRouter)
 app.use('/api', quizRouter)
 app.use('/api', qrRouter)
 app.use('/api/business', businessRouter)
+app.use('/api/admin', adminRouter)
 
 // 404
 app.use('/api', (req, res) => {

@@ -56,8 +56,13 @@ router.post('/qr/verify', (req, res) => {
     return res.status(400).json({ ok: false, message: 'userId, qrCode 필수입니다.' })
   }
 
-  const user = db.prepare('SELECT id, points FROM users WHERE id = ?').get(userId)
+  const user = db.prepare('SELECT id, points, role FROM users WHERE id = ?').get(userId)
   if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
+
+  // 사업자 계정은 포인트 획득 불가
+  if (user.role === 'business') {
+    return res.status(403).json({ ok: false, message: '사업자 계정은 방문 인증 포인트를 획득할 수 없습니다.' })
+  }
 
   const flyer = db.prepare('SELECT id, store_name, title, qr_point FROM flyers WHERE qr_code = ?').get(qrCode)
   if (!flyer) {
@@ -76,6 +81,15 @@ router.post('/qr/verify', (req, res) => {
 
   const earnedPoints = flyer.qr_point || 100
 
+  // 사업자 예산 부족 체크
+  const flyerFull = db.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyer.id)
+  if (flyerFull && flyerFull.owner_id) {
+    const owner = db.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyerFull.owner_id)
+    if (owner && owner.point_budget < earnedPoints) {
+      return res.status(400).json({ ok: false, message: '이 매장의 포인트 예산이 소진되었습니다.' })
+    }
+  }
+
   const verifyTx = db.transaction(() => {
     db.prepare(`
       INSERT INTO visit_verifications (user_id, flyer_id, points_earned)
@@ -88,6 +102,12 @@ router.post('/qr/verify', (req, res) => {
       INSERT INTO point_transactions (user_id, amount, type, description)
       VALUES (?, ?, 'earn', ?)
     `).run(userId, earnedPoints, `방문 인증: ${flyer.store_name}`)
+
+    // 사업자 예산 차감
+    if (flyerFull && flyerFull.owner_id) {
+      db.prepare('UPDATE users SET point_budget = point_budget - ? WHERE id = ?')
+        .run(earnedPoints, flyerFull.owner_id)
+    }
   })
 
   verifyTx()

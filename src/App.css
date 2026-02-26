@@ -1940,50 +1940,49 @@ body {
   line-height: 1.5;
   margin-bottom: 20px;
 }
-.quiz-options {
+.quiz-answer-input-wrap {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-.quiz-option {
-  display: flex;
-  align-items: center;
   gap: 12px;
+  margin-top: 8px;
+}
+.quiz-answer-input {
+  width: 100%;
   padding: 14px 16px;
   border: 2px solid var(--border-main);
   border-radius: 12px;
   background: var(--bg-card);
-  cursor: pointer;
-  transition: all 0.15s;
-  text-align: left;
-}
-.quiz-option:active {
-  transform: scale(0.98);
-}
-.quiz-option-selected {
-  border-color: #FF4757;
-  background: #FF475712;
-}
-.quiz-option-num {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--bg-input);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-.quiz-option-selected .quiz-option-num {
-  background: #FF4757;
-  color: #fff;
-}
-.quiz-option-text {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+.quiz-answer-input:focus {
+  border-color: #FF4757;
+}
+.quiz-submit-btn {
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #FF4757, #FF6B81);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.quiz-submit-btn:disabled {
+  background: #ccc;
+  cursor: default;
+}
+.quiz-edit-answer {
+  margin-top: 8px;
+}
+.quiz-edit-answer label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  display: block;
 }
 .quiz-loading {
   text-align: center;
@@ -2484,4 +2483,94 @@ body {
   border-color: #FF4757;
   background: #FF475712;
   color: #FF4757;
+}
+
+/* ==================== 역할 선택 모달 ==================== */
+.role-selection-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+.role-selection-modal {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+.role-selection-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.role-selection-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+/* ==================== 포인트 예산 ==================== */
+.budget-balance {
+  background: linear-gradient(135deg, #FF4757, #FF6B6B);
+  border-radius: 14px;
+  padding: 24px 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+.budget-balance-label {
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  margin-bottom: 4px;
+}
+.budget-balance-value {
+  font-size: 32px;
+  font-weight: 900;
+  color: #fff;
+}
+.budget-charge-section {
+  margin-bottom: 16px;
+}
+.budget-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.budget-preset-btn {
+  padding: 10px;
+  border: 1.5px solid var(--border-main);
+  border-radius: 10px;
+  background: var(--bg-card);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.budget-preset-btn:hover, .budget-preset-btn:active {
+  border-color: #FF4757;
+  color: #FF4757;
+}
+.charge-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-main);
+}
+.charge-history-amount {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2E7D32;
+}
+.charge-history-date {
+  font-size: 12px;
+  color: var(--text-muted);
 }

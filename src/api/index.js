@@ -232,11 +232,11 @@ export async function getRandomQuiz(flyerId, userId) {
 }
 
 // 퀴즈 정답 제출
-export async function submitQuizAnswer(userId, flyerId, quizId, selectedIdx) {
+export async function submitQuizAnswer(userId, flyerId, quizId, answer) {
   return fetchJSON(`${BASE}/quiz/attempt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, flyerId, quizId, selectedIdx }),
+    body: JSON.stringify({ userId, flyerId, quizId, answer }),
   })
 }
 
@@ -288,6 +288,31 @@ export async function getBusinessStats(token) {
 // 사업자 전단지 목록
 export async function getBusinessFlyers(token) {
   return fetchJSON(`${BASE}/business/flyers`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+// 역할 변경 (소셜 로그인 사용자)
+export async function updateUserRole(token, role) {
+  return fetchJSON(`${BASE}/users/me/role`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ role }),
+  })
+}
+
+// 포인트 예산 충전
+export async function chargePointBudget(token, amount) {
+  return fetchJSON(`${BASE}/business/charge-points`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ amount }),
+  })
+}
+
+// 충전 내역 조회
+export async function getChargeHistory(token) {
+  return fetchJSON(`${BASE}/business/charge-history`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 }

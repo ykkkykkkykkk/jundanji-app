@@ -25,11 +25,8 @@ router.post('/flyers/:flyerId/quizzes', authMiddleware, (req, res) => {
   }
 
   for (const q of quizzes) {
-    if (!q.question || !Array.isArray(q.options) || q.options.length < 2) {
-      return res.status(400).json({ ok: false, message: '각 퀴즈에 질문과 최소 2개 선택지가 필요합니다.' })
-    }
-    if (q.answerIdx === undefined || q.answerIdx < 0 || q.answerIdx >= q.options.length) {
-      return res.status(400).json({ ok: false, message: '올바른 정답 인덱스를 지정해주세요.' })
+    if (!q.question || !q.answer) {
+      return res.status(400).json({ ok: false, message: '각 퀴즈에 질문과 정답이 필요합니다.' })
     }
     const point = Number(q.point) || 10
     if (point < 10 || point > 50) {
@@ -38,14 +35,13 @@ router.post('/flyers/:flyerId/quizzes', authMiddleware, (req, res) => {
   }
 
   const insertTx = db.transaction(() => {
-    // 기존 퀴즈 삭제 후 재등록
     db.prepare('DELETE FROM quizzes WHERE flyer_id = ?').run(flyerId)
     const insert = db.prepare(`
-      INSERT INTO quizzes (flyer_id, question, options, answer_idx, point, sort_order)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO quizzes (flyer_id, question, answer, point, sort_order)
+      VALUES (?, ?, ?, ?, ?)
     `)
     quizzes.forEach((q, idx) => {
-      insert.run(flyerId, q.question, JSON.stringify(q.options), q.answerIdx, Number(q.point) || 10, idx)
+      insert.run(flyerId, q.question, q.answer.trim(), Number(q.point) || 10, idx)
     })
   })
 
@@ -64,8 +60,7 @@ router.get('/flyers/:flyerId/quizzes', (req, res) => {
       id: q.id,
       flyerId: q.flyer_id,
       question: q.question,
-      options: JSON.parse(q.options),
-      answerIdx: q.answer_idx,
+      answer: q.answer,
       point: q.point,
     })),
   })
@@ -79,6 +74,12 @@ router.get('/flyers/:flyerId/quiz', (req, res) => {
 
   if (!userId) {
     return res.status(400).json({ ok: false, message: 'userId 필수입니다.' })
+  }
+
+  // 사업자 계정은 퀴즈 풀기 불가
+  const quizUser = db.prepare('SELECT role FROM users WHERE id = ?').get(userId)
+  if (quizUser && quizUser.role === 'business') {
+    return res.status(403).json({ ok: false, message: '사업자 계정은 퀴즈를 풀 수 없습니다.' })
   }
 
   // 이미 응시했는지 확인
@@ -102,7 +103,6 @@ router.get('/flyers/:flyerId/quiz', (req, res) => {
     data: {
       quizId: quiz.id,
       question: quiz.question,
-      options: JSON.parse(quiz.options),
       point: quiz.point,
     },
     attempted: false,
@@ -112,10 +112,16 @@ router.get('/flyers/:flyerId/quiz', (req, res) => {
 // 퀴즈 정답 제출
 // POST /api/quiz/attempt
 router.post('/quiz/attempt', (req, res) => {
-  const { userId, flyerId, quizId, selectedIdx } = req.body
+  const { userId, flyerId, quizId, answer } = req.body
 
-  if (!userId || !flyerId || !quizId || selectedIdx === undefined) {
+  if (!userId || !flyerId || !quizId || !answer) {
     return res.status(400).json({ ok: false, message: '필수 항목이 누락되었습니다.' })
+  }
+
+  // 사업자 계정은 퀴즈 풀기 불가
+  const attemptUser = db.prepare('SELECT role FROM users WHERE id = ?').get(userId)
+  if (attemptUser && attemptUser.role === 'business') {
+    return res.status(403).json({ ok: false, message: '사업자 계정은 퀴즈를 풀 수 없습니다.' })
   }
 
   const user = db.prepare('SELECT id, points FROM users WHERE id = ?').get(userId)
@@ -130,14 +136,24 @@ router.post('/quiz/attempt', (req, res) => {
     return res.status(409).json({ ok: false, message: '이미 퀴즈에 참여했습니다.' })
   }
 
-  const isCorrect = selectedIdx === quiz.answer_idx
+  // 사업자 예산 부족 체크
+  const flyerForBudget = db.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyerId)
+  if (flyerForBudget && flyerForBudget.owner_id) {
+    const owner = db.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyerForBudget.owner_id)
+    if (owner && owner.point_budget < quiz.point) {
+      return res.status(400).json({ ok: false, message: '이 전단지의 포인트 예산이 소진되었습니다.' })
+    }
+  }
+
+  // 정답 비교 (공백 제거, 대소문자 무시)
+  const isCorrect = answer.trim().toLowerCase() === quiz.answer.trim().toLowerCase()
   const earnedPoints = isCorrect ? quiz.point : 0
 
   const attemptTx = db.transaction(() => {
     db.prepare(`
       INSERT INTO quiz_attempts (user_id, flyer_id, quiz_id, selected_idx, is_correct, points_earned)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(userId, flyerId, quizId, selectedIdx, isCorrect ? 1 : 0, earnedPoints)
+      VALUES (?, ?, ?, 0, ?, ?)
+    `).run(userId, flyerId, quizId, isCorrect ? 1 : 0, earnedPoints)
 
     if (isCorrect) {
       db.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(earnedPoints, userId)
@@ -145,6 +161,13 @@ router.post('/quiz/attempt', (req, res) => {
         INSERT INTO point_transactions (user_id, amount, type, description)
         VALUES (?, ?, 'earn', ?)
       `).run(userId, earnedPoints, `퀴즈 정답 (${quiz.question.slice(0, 20)}...)`)
+
+      // 사업자 예산 차감
+      const flyerOwner = db.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyerId)
+      if (flyerOwner && flyerOwner.owner_id) {
+        db.prepare('UPDATE users SET point_budget = point_budget - ? WHERE id = ?')
+          .run(earnedPoints, flyerOwner.owner_id)
+      }
     }
   })
 
@@ -157,7 +180,7 @@ router.post('/quiz/attempt', (req, res) => {
       isCorrect,
       earnedPoints,
       totalPoints: updatedUser.points,
-      correctIdx: quiz.answer_idx,
+      correctAnswer: quiz.answer,
     },
   })
 })
@@ -168,9 +191,9 @@ router.get('/users/:userId/quiz-history', (req, res) => {
   const { userId } = req.params
 
   const history = db.prepare(`
-    SELECT qa.id, qa.flyer_id, qa.quiz_id, qa.selected_idx, qa.is_correct,
+    SELECT qa.id, qa.flyer_id, qa.quiz_id, qa.is_correct,
            qa.points_earned, qa.attempted_at,
-           q.question, q.options,
+           q.question, q.answer,
            f.store_name, f.store_emoji, f.title
     FROM quiz_attempts qa
     JOIN quizzes q ON q.id = qa.quiz_id
@@ -188,8 +211,7 @@ router.get('/users/:userId/quiz-history', (req, res) => {
       storeEmoji: h.store_emoji,
       flyerTitle: h.title,
       question: h.question,
-      options: JSON.parse(h.options),
-      selectedIdx: h.selected_idx,
+      correctAnswer: h.answer,
       isCorrect: !!h.is_correct,
       pointsEarned: h.points_earned,
       attemptedAt: h.attempted_at,

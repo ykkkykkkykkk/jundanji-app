@@ -1,14 +1,13 @@
 import { useState } from 'react'
 
 export default function QuizModal({ quiz, onAnswer, onClose, result }) {
-  const [selected, setSelected] = useState(null)
+  const [answer, setAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const handleSelect = async (idx) => {
-    if (result || submitting) return
-    setSelected(idx)
+  const handleSubmit = async () => {
+    if (!answer.trim() || submitting) return
     setSubmitting(true)
-    await onAnswer(idx)
+    await onAnswer(answer.trim())
     setSubmitting(false)
   }
 
@@ -26,9 +25,9 @@ export default function QuizModal({ quiz, onAnswer, onClose, result }) {
           {result.isCorrect && (
             <div className="quiz-result-points">+{result.earnedPoints}P 적립!</div>
           )}
-          {!result.isCorrect && (
+          {!result.isCorrect && result.correctAnswer && (
             <div className="quiz-result-answer">
-              정답: {quiz.options[result.correctIdx]}
+              정답: {result.correctAnswer}
             </div>
           )}
           <button className="quiz-close-btn" onClick={onClose}>확인</button>
@@ -46,20 +45,24 @@ export default function QuizModal({ quiz, onAnswer, onClose, result }) {
           <span className="quiz-point-badge">+{quiz.point}P</span>
         </div>
         <div className="quiz-question">{quiz.question}</div>
-        <div className="quiz-options">
-          {quiz.options.map((opt, idx) => (
-            <button
-              key={idx}
-              className={`quiz-option ${selected === idx ? 'quiz-option-selected' : ''}`}
-              onClick={() => handleSelect(idx)}
-              disabled={submitting}
-            >
-              <span className="quiz-option-num">{idx + 1}</span>
-              <span className="quiz-option-text">{opt}</span>
-            </button>
-          ))}
+        <div className="quiz-answer-input-wrap">
+          <input
+            className="quiz-answer-input"
+            type="text"
+            value={answer}
+            onChange={e => setAnswer(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            placeholder="정답을 입력하세요"
+            autoFocus
+          />
+          <button
+            className="quiz-submit-btn"
+            onClick={handleSubmit}
+            disabled={!answer.trim() || submitting}
+          >
+            {submitting ? '채점 중...' : '제출'}
+          </button>
         </div>
-        {submitting && <div className="quiz-loading">채점 중...</div>}
       </div>
     </div>
   )

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import QrScanner from '../components/QrScanner'
 import { verifyQrCode } from '../api/index'
 
-export default function QrScanPage({ userId, onPointsEarned, onBack, isLoggedIn, onLoginClick }) {
+export default function QrScanPage({ userId, userRole, onPointsEarned, onBack, isLoggedIn, onLoginClick }) {
   const [scanning, setScanning] = useState(true)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
@@ -13,6 +13,11 @@ export default function QrScanPage({ userId, onPointsEarned, onBack, isLoggedIn,
 
     if (!isLoggedIn) {
       setError('로그인 후 QR 인증을 이용할 수 있습니다.')
+      return
+    }
+
+    if (userRole === 'business') {
+      setError('사업자 계정은 방문 인증 포인트를 획득할 수 없습니다.')
       return
     }
 

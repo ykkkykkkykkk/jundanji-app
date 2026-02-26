@@ -13,14 +13,27 @@ router.post('/share', (req, res) => {
     return res.status(400).json({ ok: false, message: 'userId, flyerId 필수입니다.' })
   }
 
-  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId)
+  const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId)
   if (!user) {
     return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
   }
 
-  const flyer = db.prepare('SELECT id, share_point FROM flyers WHERE id = ?').get(flyerId)
+  // 사업자 계정은 포인트 획득 불가
+  if (user.role === 'business') {
+    return res.status(403).json({ ok: false, message: '사업자 계정은 포인트를 획득할 수 없습니다.' })
+  }
+
+  const flyer = db.prepare('SELECT id, share_point, owner_id FROM flyers WHERE id = ?').get(flyerId)
   if (!flyer) {
     return res.status(404).json({ ok: false, message: '전단지를 찾을 수 없습니다.' })
+  }
+
+  // 사업자 예산 부족 체크
+  if (flyer.owner_id) {
+    const owner = db.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyer.owner_id)
+    if (owner && owner.point_budget < flyer.share_point) {
+      return res.status(400).json({ ok: false, message: '이 전단지의 포인트 예산이 소진되었습니다.' })
+    }
   }
 
   // 중복 공유 체크
@@ -51,6 +64,12 @@ router.post('/share', (req, res) => {
     db.prepare(
       'INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)'
     ).run(userId, earnedPoints, 'earn', `전단지 공유 - flyerId:${flyerId}`)
+
+    // 사업자 예산 차감
+    if (flyer.owner_id) {
+      db.prepare('UPDATE users SET point_budget = point_budget - ? WHERE id = ?')
+        .run(earnedPoints, flyer.owner_id)
+    }
   })
 
   shareTx()

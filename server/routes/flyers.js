@@ -154,6 +154,9 @@ router.get('/:id', (req, res) => {
     return res.status(404).json({ ok: false, message: '전단지를 찾을 수 없습니다.' })
   }
 
+  // 조회수 증가
+  db.prepare('UPDATE flyers SET view_count = view_count + 1 WHERE id = ?').run(id)
+
   const items = db.prepare(`
     SELECT name, original_price AS originalPrice, sale_price AS salePrice
     FROM flyer_items

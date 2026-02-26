@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { getFlyers, createFlyer, updateFlyer, deleteFlyer, registerQuizzes, getQuizzesByFlyer, generateQrCode, getQrCode, getBusinessStats, getBusinessFlyers } from '../api/index'
+import { getFlyers, createFlyer, updateFlyer, deleteFlyer, registerQuizzes, getQuizzesByFlyer, generateQrCode, getQrCode, getBusinessStats, getBusinessFlyers, chargePointBudget, getChargeHistory } from '../api/index'
 import QrDisplay from '../components/QrDisplay'
 
 const CATEGORIES = ['마트', '편의점', '뷰티', '카페', '생활용품', '음식점', '패션', '가전', '온라인', '엔터']
@@ -11,7 +11,7 @@ const EMPTY_FORM = {
   items: [{ name: '', originalPrice: '', salePrice: '' }],
 }
 
-const EMPTY_QUIZ = { question: '', options: ['', '', '', ''], answerIdx: 0, point: 20 }
+const EMPTY_QUIZ = { question: '', answer: '', point: 20 }
 
 export default function AdminPage({ onBack, token, userId }) {
   const [tab, setTab] = useState('flyers')  // 'flyers' | 'quiz' | 'qr' | 'stats'
@@ -40,6 +40,12 @@ export default function AdminPage({ onBack, token, userId }) {
 
   // 통계
   const [stats, setStats] = useState(null)
+
+  // 예산 관련
+  const [chargeAmount, setChargeAmount] = useState('')
+  const [chargeHistoryList, setChargeHistoryList] = useState([])
+  const [chargeMsg, setChargeMsg] = useState('')
+  const [charging, setCharging] = useState(false)
 
   const loadFlyers = () => {
     setLoading(true)
@@ -128,7 +134,7 @@ export default function AdminPage({ onBack, token, userId }) {
     try {
       const existing = await getQuizzesByFlyer(flyerId)
       if (existing.length > 0) {
-        setQuizzes(existing.map(q => ({ question: q.question, options: q.options, answerIdx: q.answerIdx, point: q.point })))
+        setQuizzes(existing.map(q => ({ question: q.question, answer: q.answer, point: q.point })))
       } else {
         setQuizzes([{ ...EMPTY_QUIZ }, { ...EMPTY_QUIZ }, { ...EMPTY_QUIZ }])
       }
@@ -160,7 +166,7 @@ export default function AdminPage({ onBack, token, userId }) {
   const handleQuizSave = async () => {
     for (const q of quizzes) {
       if (!q.question.trim()) { setQuizMsg('모든 질문을 입력해주세요.'); return }
-      if (q.options.some(o => !o.trim())) { setQuizMsg('모든 선택지를 입력해주세요.'); return }
+      if (!q.answer.trim()) { setQuizMsg('모든 정답을 입력해주세요.'); return }
     }
     setQuizSaving(true)
     try {
@@ -199,12 +205,38 @@ export default function AdminPage({ onBack, token, userId }) {
     } catch {}
   }
 
-  useEffect(() => { if (tab === 'stats') loadStats() }, [tab])
+  // 예산 핸들러
+  const loadChargeHistoryData = async () => {
+    if (!token) return
+    try {
+      const data = await getChargeHistory(token)
+      setChargeHistoryList(data)
+    } catch {}
+  }
+
+  const handleCharge = async () => {
+    const amount = Number(chargeAmount)
+    if (!amount || amount < 1000) { setChargeMsg('최소 1,000P부터 충전 가능합니다.'); return }
+    setCharging(true)
+    try {
+      const data = await chargePointBudget(token, amount)
+      setChargeMsg(`${amount.toLocaleString()}P 충전 완료! 잔여 예산: ${data.pointBudget.toLocaleString()}P`)
+      setChargeAmount('')
+      loadChargeHistoryData()
+      loadStats()
+    } catch (e) { setChargeMsg(e.message) } finally { setCharging(false) }
+  }
+
+  useEffect(() => {
+    if (tab === 'stats') loadStats()
+    if (tab === 'budget') { loadStats(); loadChargeHistoryData() }
+  }, [tab])
 
   const tabItems = [
     { id: 'flyers', label: '📋 전단지' },
     { id: 'quiz', label: '❓ 퀴즈' },
     { id: 'qr', label: '📱 QR' },
+    { id: 'budget', label: '💰 예산' },
     { id: 'stats', label: '📊 통계' },
   ]
 
@@ -295,11 +327,11 @@ export default function AdminPage({ onBack, token, userId }) {
           </div>
           <div className="admin-row">
             <label>시작일 *</label>
-            <input className="admin-input" value={form.validFrom} onChange={e => handleField('validFrom', e.target.value)} placeholder="2026.02.21" />
+            <input className="admin-input" type="date" value={form.validFrom.replaceAll('.', '-')} onChange={e => handleField('validFrom', e.target.value.replaceAll('-', '.'))} />
           </div>
           <div className="admin-row">
             <label>종료일 *</label>
-            <input className="admin-input" value={form.validUntil} onChange={e => handleField('validUntil', e.target.value)} placeholder="2026.02.28" />
+            <input className="admin-input" type="date" value={form.validUntil.replaceAll('.', '-')} onChange={e => handleField('validUntil', e.target.value.replaceAll('-', '.'))} />
           </div>
           <div className="admin-row">
             <label>공유 포인트</label>
@@ -385,23 +417,14 @@ export default function AdminPage({ onBack, token, userId }) {
                 onChange={e => handleQuizField(qIdx, 'question', e.target.value)}
                 placeholder="질문을 입력하세요"
               />
-              <div className="quiz-edit-options">
-                {q.options.map((opt, oIdx) => (
-                  <div key={oIdx} className="quiz-edit-option">
-                    <input
-                      type="radio"
-                      name={`quiz-answer-${qIdx}`}
-                      checked={q.answerIdx === oIdx}
-                      onChange={() => handleQuizField(qIdx, 'answerIdx', oIdx)}
-                    />
-                    <input
-                      className="admin-input"
-                      value={opt}
-                      onChange={e => handleQuizOption(qIdx, oIdx, e.target.value)}
-                      placeholder={`선택지 ${oIdx + 1}`}
-                    />
-                  </div>
-                ))}
+              <div className="quiz-edit-answer">
+                <label>정답</label>
+                <input
+                  className="admin-input"
+                  value={q.answer}
+                  onChange={e => handleQuizField(qIdx, 'answer', e.target.value)}
+                  placeholder="정답을 입력하세요"
+                />
               </div>
               <div className="quiz-edit-point">
                 <label>포인트 (10~50)</label>
@@ -465,6 +488,58 @@ export default function AdminPage({ onBack, token, userId }) {
         </div>
       )}
 
+      {/* ===== 포인트 예산 탭 ===== */}
+      {tab === 'budget' && (
+        <div className="admin-form">
+          <div className="admin-section-title">포인트 예산 충전</div>
+          <div className="budget-balance">
+            <div className="budget-balance-label">현재 예산 잔액</div>
+            <div className="budget-balance-value">{(stats?.pointBudget ?? 0).toLocaleString()}P</div>
+          </div>
+
+          <div className="budget-charge-section">
+            <div className="budget-presets">
+              {[10000, 50000, 100000, 500000].map(amt => (
+                <button
+                  key={amt}
+                  className="budget-preset-btn"
+                  onClick={() => setChargeAmount(String(amt))}
+                >
+                  {amt.toLocaleString()}P
+                </button>
+              ))}
+            </div>
+            <div className="admin-row">
+              <label>충전 금액</label>
+              <input
+                className="admin-input"
+                type="number"
+                value={chargeAmount}
+                onChange={e => setChargeAmount(e.target.value)}
+                placeholder="최소 1,000P"
+                min="1000"
+              />
+            </div>
+            {chargeMsg && <p className="admin-msg">{chargeMsg}</p>}
+            <button className="admin-save-btn" onClick={handleCharge} disabled={charging}>
+              {charging ? '충전 중...' : '충전하기'}
+            </button>
+          </div>
+
+          <div className="admin-section-title" style={{ marginTop: 24 }}>충전 내역</div>
+          {chargeHistoryList.length > 0 ? (
+            chargeHistoryList.map(h => (
+              <div key={h.id} className="charge-history-item">
+                <div className="charge-history-amount">+{h.amount.toLocaleString()}P</div>
+                <div className="charge-history-date">{h.created_at}</div>
+              </div>
+            ))
+          ) : (
+            <div className="list-status">충전 내역이 없습니다.</div>
+          )}
+        </div>
+      )}
+
       {/* ===== 통계 탭 ===== */}
       {tab === 'stats' && (
         <div className="biz-stats">
@@ -474,6 +549,11 @@ export default function AdminPage({ onBack, token, userId }) {
                 <div className="stats-card-icon">📋</div>
                 <div className="stats-card-value">{stats.totalFlyers}</div>
                 <div className="stats-card-label">등록 전단지</div>
+              </div>
+              <div className="stats-card">
+                <div className="stats-card-icon">👀</div>
+                <div className="stats-card-value">{(stats.totalViews ?? 0).toLocaleString()}</div>
+                <div className="stats-card-label">총 노출수</div>
               </div>
               <div className="stats-card">
                 <div className="stats-card-icon">📤</div>
@@ -486,6 +566,11 @@ export default function AdminPage({ onBack, token, userId }) {
                 <div className="stats-card-label">퀴즈 응시</div>
               </div>
               <div className="stats-card">
+                <div className="stats-card-icon">📊</div>
+                <div className="stats-card-value">{stats.quizParticipationRate ?? 0}%</div>
+                <div className="stats-card-label">퀴즈 참여율</div>
+              </div>
+              <div className="stats-card">
                 <div className="stats-card-icon">📍</div>
                 <div className="stats-card-value">{stats.totalVisits}</div>
                 <div className="stats-card-label">방문 인증</div>
@@ -494,6 +579,11 @@ export default function AdminPage({ onBack, token, userId }) {
                 <div className="stats-card-icon">💰</div>
                 <div className="stats-card-value">{stats.totalPointsDistributed.toLocaleString()}P</div>
                 <div className="stats-card-label">총 배포 포인트</div>
+              </div>
+              <div className="stats-card stats-card-wide">
+                <div className="stats-card-icon">🏦</div>
+                <div className="stats-card-value">{(stats.pointBudget ?? 0).toLocaleString()}P</div>
+                <div className="stats-card-label">잔여 예산</div>
               </div>
             </div>
           ) : (

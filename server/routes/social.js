@@ -14,13 +14,15 @@ function signToken(userId) {
 
 function findOrCreateSocialUser(provider, providerId, nickname) {
   let user = db.prepare('SELECT * FROM users WHERE provider = ? AND provider_id = ?').get(provider, providerId)
+  let isNew = false
   if (!user) {
     const { lastInsertRowid: userId } = db.prepare(
       'INSERT INTO users (nickname, provider, provider_id) VALUES (?, ?, ?)'
     ).run(nickname, provider, providerId)
     user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId)
+    isNew = true
   }
-  return user
+  return { user, isNew }
 }
 
 // ─────────────────────────────── 카카오 ───────────────────────────────
@@ -68,11 +70,11 @@ router.get('/kakao/callback', async (req, res) => {
     const nickname = profile.kakao_account?.profile?.nickname || `카카오유저${kakaoId.slice(-4)}`
 
     // 3. DB 유저 찾기 / 생성
-    const user = findOrCreateSocialUser('kakao', kakaoId, nickname)
+    const { user, isNew } = findOrCreateSocialUser('kakao', kakaoId, nickname)
 
     const token = signToken(user.id)
     res.redirect(
-      `${FRONTEND_URL}?token=${token}&userId=${user.id}&nickname=${encodeURIComponent(user.nickname)}`
+      `${FRONTEND_URL}?token=${token}&userId=${user.id}&nickname=${encodeURIComponent(user.nickname)}&role=${user.role || 'user'}&isNew=${isNew}`
     )
   } catch (e) {
     console.error('[카카오 로그인 오류]', e.message)
@@ -128,11 +130,11 @@ router.get('/google/callback', async (req, res) => {
     const nickname = profile.name || `구글유저${googleId.slice(-4)}`
 
     // 3. DB 유저 찾기 / 생성
-    const user = findOrCreateSocialUser('google', googleId, nickname)
+    const { user, isNew } = findOrCreateSocialUser('google', googleId, nickname)
 
     const token = signToken(user.id)
     res.redirect(
-      `${FRONTEND_URL}?token=${token}&userId=${user.id}&nickname=${encodeURIComponent(user.nickname)}`
+      `${FRONTEND_URL}?token=${token}&userId=${user.id}&nickname=${encodeURIComponent(user.nickname)}&role=${user.role || 'user'}&isNew=${isNew}`
     )
   } catch (e) {
     console.error('[구글 로그인 오류]', e.message)
