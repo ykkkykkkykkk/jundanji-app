@@ -41,15 +41,17 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, message: '전단지 서버 정상 동작 중' })
 })
 
-// 환경변수 디버그 (키 존재 여부만 확인)
+// 환경변수 디버그
 app.get('/api/debug/env', (req, res) => {
+  const mask = (v) => v ? v.slice(0, 6) + '...' + v.slice(-4) : '(not set)'
   res.json({
     ok: true,
     env: {
       VERCEL: !!process.env.VERCEL,
       JWT_SECRET: !!process.env.JWT_SECRET,
-      KAKAO_CLIENT_ID: !!process.env.KAKAO_CLIENT_ID,
-      KAKAO_REDIRECT_URI: !!process.env.KAKAO_REDIRECT_URI,
+      KAKAO_CLIENT_ID: mask(process.env.KAKAO_CLIENT_ID),
+      KAKAO_REDIRECT_URI: process.env.KAKAO_REDIRECT_URI || '(not set)',
+      KAKAO_CLIENT_SECRET: !!process.env.KAKAO_CLIENT_SECRET,
       FRONTEND_URL: process.env.FRONTEND_URL || '(not set)',
     }
   })
