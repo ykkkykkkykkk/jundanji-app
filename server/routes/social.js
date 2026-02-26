@@ -58,7 +58,7 @@ router.get('/kakao/callback', async (req, res) => {
       }),
     })
     const tokenData = await tokenRes.json()
-    if (!tokenData.access_token) throw new Error('카카오 토큰 발급 실패')
+    if (!tokenData.access_token) throw new Error('카카오 토큰 발급 실패: ' + JSON.stringify(tokenData))
 
     // 2. 사용자 프로필 조회
     const profileRes = await fetch('https://kapi.kakao.com/v2/user/me', {

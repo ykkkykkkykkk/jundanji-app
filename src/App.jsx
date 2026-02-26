@@ -47,7 +47,11 @@ export default function App() {
       return { token, userId: Number(userId), nickname: decoded, role }
     }
     // 에러 파라미터 처리
-    if (params.get('error')) window.history.replaceState({}, '', '/')
+    if (params.get('error')) {
+      const reason = params.get('reason') || params.get('error')
+      setTimeout(() => alert('로그인 실패: ' + decodeURIComponent(reason)), 500)
+      window.history.replaceState({}, '', '/')
+    }
     return loadAuth()
   })
   const [darkMode, setDarkMode] = useState(() => loadDarkMode())
