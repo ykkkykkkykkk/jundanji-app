@@ -78,7 +78,7 @@ router.get('/kakao/callback', async (req, res) => {
     )
   } catch (e) {
     console.error('[카카오 로그인 오류]', e.message)
-    res.redirect(`${FRONTEND_URL}?error=kakao_failed`)
+    res.redirect(`${FRONTEND_URL}?error=kakao_failed&reason=${encodeURIComponent(e.message)}`)
   }
 })
 
