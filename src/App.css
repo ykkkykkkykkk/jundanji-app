@@ -2493,8 +2493,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 99999;
   padding: 20px;
+}
+.role-selection-modal .role-btn {
+  padding: 16px 12px;
+  font-size: 16px;
+  min-height: 52px;
+  position: relative;
+  z-index: 99999;
 }
 .role-selection-modal {
   background: var(--bg-card);
