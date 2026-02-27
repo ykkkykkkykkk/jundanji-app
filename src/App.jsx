@@ -145,17 +145,15 @@ export default function App() {
     }
   }
 
-  const handleRoleSelect = async (selectedRole) => {
-    try {
-      await updateUserRole(auth.token, selectedRole)
-      const newAuth = { ...auth, role: selectedRole }
-      setAuth(newAuth)
-      localStorage.setItem('role', selectedRole)
-      localStorage.removeItem('needRoleSelection')
-      setShowRoleSelection(false)
-    } catch (err) {
-      console.error('역할 설정 실패:', err.message)
-    }
+  const handleRoleSelect = (selectedRole) => {
+    // 먼저 UI 즉시 반영
+    const newAuth = { ...auth, role: selectedRole }
+    setAuth(newAuth)
+    localStorage.setItem('role', selectedRole)
+    localStorage.removeItem('needRoleSelection')
+    setShowRoleSelection(false)
+    // API는 백그라운드로 호출 (실패해도 로컬 설정은 유지)
+    updateUserRole(auth.token, selectedRole).catch(() => {})
   }
 
   const handleFlyerClick = (flyer) => {
