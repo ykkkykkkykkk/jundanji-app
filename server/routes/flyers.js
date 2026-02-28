@@ -211,13 +211,20 @@ router.post('/', upload.single('image'), (req, res) => {
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : null
 
   const insertTx = db.transaction(() => {
+    // owner_id FK 검증: 유저가 존재하는 경우에만 설정
+    let validOwnerId = null
+    if (ownerId) {
+      const ownerExists = db.prepare('SELECT id FROM users WHERE id = ?').get(Number(ownerId))
+      if (ownerExists) validOwnerId = Number(ownerId)
+    }
+
     const { lastInsertRowid: flyerId } = db.prepare(`
       INSERT INTO flyers (store_name, store_emoji, store_color, store_bg_color, category, title, subtitle,
                           valid_from, valid_until, share_point, share_count, tags, image_url, qr_point, owner_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
     `).run(storeName, storeEmoji || '🏪', storeColor || '#FF4757', storeBgColor || '#FFF5F5',
            category, title, subtitle || '', validFrom, validUntil, Number(sharePoint) || 10,
-           JSON.stringify(parsedTags), imageUrl, Number(qrPoint) || 0, ownerId ? Number(ownerId) : null)
+           JSON.stringify(parsedTags), imageUrl, Number(qrPoint) || 0, validOwnerId)
 
     parsedItems.forEach((item, idx) => {
       db.prepare(`
