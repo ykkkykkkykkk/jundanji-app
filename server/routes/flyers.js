@@ -228,7 +228,13 @@ router.post('/', upload.single('image'), (req, res) => {
     return flyerId
   })
 
-  const flyerId = insertTx()
+  let flyerId
+  try {
+    flyerId = insertTx()
+  } catch (err) {
+    console.error('[전단지 등록 오류]', err.message, err.stack)
+    return res.status(500).json({ ok: false, message: '전단지 등록 실패: ' + err.message })
+  }
 
   db.prepare(`
     INSERT INTO notifications (title, body, emoji)
