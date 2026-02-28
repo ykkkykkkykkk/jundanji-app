@@ -42,7 +42,7 @@ export default function App() {
       localStorage.setItem('userId', userId)
       localStorage.setItem('nickname', decoded)
       localStorage.setItem('role', role)
-      if (isNew) localStorage.setItem('needRoleSelection', 'true')
+      if (isNew && !localStorage.getItem('roleSelected')) localStorage.setItem('needRoleSelection', 'true')
       window.history.replaceState({}, '', '/')
       return { token, userId: Number(userId), nickname: decoded, role }
     }
@@ -146,13 +146,12 @@ export default function App() {
   }
 
   const handleRoleSelect = (selectedRole) => {
-    // 먼저 UI 즉시 반영
     const newAuth = { ...auth, role: selectedRole }
     setAuth(newAuth)
     localStorage.setItem('role', selectedRole)
+    localStorage.setItem('roleSelected', 'true')
     localStorage.removeItem('needRoleSelection')
     setShowRoleSelection(false)
-    // API는 백그라운드로 호출 (실패해도 로컬 설정은 유지)
     updateUserRole(auth.token, selectedRole).catch(() => {})
   }
 
