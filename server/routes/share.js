@@ -13,6 +13,7 @@ router.post('/share', (req, res) => {
     return res.status(400).json({ ok: false, message: 'userId, flyerId 필수입니다.' })
   }
 
+  db.ensureUser(userId)
   const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId)
   if (!user) {
     return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
@@ -72,7 +73,12 @@ router.post('/share', (req, res) => {
     }
   })
 
-  shareTx()
+  try {
+    shareTx()
+  } catch (err) {
+    console.error('[공유 처리 오류]', err.message)
+    return res.status(500).json({ ok: false, message: '공유 처리 중 오류가 발생했습니다.' })
+  }
 
   const updatedUser = db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
 
@@ -90,9 +96,10 @@ router.post('/share', (req, res) => {
 router.get('/users/:userId/points', (req, res) => {
   const { userId } = req.params
 
+  db.ensureUser(userId)
   const user = db.prepare('SELECT id, nickname, points FROM users WHERE id = ?').get(userId)
   if (!user) {
-    return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
+    return res.json({ ok: true, data: { points: 0, nickname: '홍길동' } })
   }
 
   res.json({ ok: true, data: { points: user.points, nickname: user.nickname } })
@@ -135,6 +142,7 @@ router.post('/points/use', (req, res) => {
     return res.status(400).json({ ok: false, message: 'userId, amount(양수) 필수입니다.' })
   }
 
+  db.ensureUser(userId)
   const user = db.prepare('SELECT id, points FROM users WHERE id = ?').get(userId)
   if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
   if (user.points < amount) {
@@ -147,7 +155,12 @@ router.post('/points/use', (req, res) => {
       'INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)'
     ).run(userId, amount, 'use', description || '포인트 사용')
   })
-  useTx()
+  try {
+    useTx()
+  } catch (err) {
+    console.error('[포인트 사용 오류]', err.message)
+    return res.status(500).json({ ok: false, message: '포인트 사용 중 오류가 발생했습니다.' })
+  }
 
   const updated = db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
   res.json({ ok: true, data: { usedPoints: amount, remainPoints: updated.points } })

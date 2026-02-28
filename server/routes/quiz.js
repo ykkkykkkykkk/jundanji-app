@@ -45,7 +45,12 @@ router.post('/flyers/:flyerId/quizzes', authMiddleware, (req, res) => {
     })
   })
 
-  insertTx()
+  try {
+    insertTx()
+  } catch (err) {
+    console.error('[퀴즈 등록 오류]', err.message)
+    return res.status(500).json({ ok: false, message: '퀴즈 등록 중 오류가 발생했습니다.' })
+  }
   res.status(201).json({ ok: true, data: { count: quizzes.length } })
 })
 
@@ -124,6 +129,7 @@ router.post('/quiz/attempt', (req, res) => {
     return res.status(403).json({ ok: false, message: '사업자 계정은 퀴즈를 풀 수 없습니다.' })
   }
 
+  db.ensureUser(userId)
   const user = db.prepare('SELECT id, points FROM users WHERE id = ?').get(userId)
   if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
 
@@ -171,7 +177,12 @@ router.post('/quiz/attempt', (req, res) => {
     }
   })
 
-  attemptTx()
+  try {
+    attemptTx()
+  } catch (err) {
+    console.error('[퀴즈 응시 오류]', err.message)
+    return res.status(500).json({ ok: false, message: '퀴즈 응시 중 오류가 발생했습니다.' })
+  }
 
   const updatedUser = db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
   res.json({

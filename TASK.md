@@ -1,6 +1,6 @@
 # 전단지 앱 - 프로젝트 진행 현황
 
-> 마지막 업데이트: 2026-02-25 (구조 전면 개편 완료 🎉)
+> 마지막 업데이트: 2026-02-28 (v3.1 안정화 패치)
 
 ---
 
@@ -177,6 +177,38 @@
 │   └── data.db
 └── TASK.md
 ```
+
+---
+
+## v3.1 안정화 패치 (2026-02-28) ✅
+
+### 버그 수정
+
+#### Vercel 인메모리 DB 안정화 ✅
+- [x] Vercel 환경에서 FK 제약조건 비활성화 (콜드스타트 시 유저 없음 문제 방지)
+- [x] 모든 FK 제약조건에 ON DELETE CASCADE 추가 (7개 테이블)
+- [x] `db.ensureUser(userId)` 헬퍼 함수 추가 (유저 자동 생성)
+
+#### 트랜잭션 에러 핸들링 ✅
+- [x] share.js — 공유/포인트 사용 트랜잭션 try-catch
+- [x] quiz.js — 퀴즈 등록/응시 트랜잭션 try-catch
+- [x] qr.js — QR 인증 트랜잭션 try-catch
+- [x] business.js — 포인트 충전 트랜잭션 try-catch
+- [x] admin.js — 출금 처리 트랜잭션 try-catch
+
+#### FK 참조 무결성 보호 ✅
+- [x] bookmarks.js — 북마크 추가 전 유저 존재 확인/자동 생성
+- [x] share.js — 공유/포인트 조회 시 유저 자동 생성
+- [x] quiz.js — 퀴즈 응시 전 유저 자동 생성
+- [x] qr.js — QR 인증 전 유저 자동 생성
+- [x] social.js — 소셜 로그인 유저 생성 에러 핸들링 강화
+
+#### 이전 패치 (Vercel 배포 관련)
+- [x] 카카오 OAuth KOE010 에러 해결 (Client Secret 추가)
+- [x] FRONTEND_URL 환경변수 설정 (localhost 리다이렉트 방지)
+- [x] 역할 선택 모달 클릭 불가 / 반복 표시 문제 해결
+- [x] /admin 라우팅 수정 (admin.html로 연결)
+- [x] 전단지 등록 시 owner_id FK 검증 추가
 
 ---
 

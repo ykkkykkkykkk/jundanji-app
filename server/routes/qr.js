@@ -56,6 +56,7 @@ router.post('/qr/verify', (req, res) => {
     return res.status(400).json({ ok: false, message: 'userId, qrCode 필수입니다.' })
   }
 
+  db.ensureUser(userId)
   const user = db.prepare('SELECT id, points, role FROM users WHERE id = ?').get(userId)
   if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
 
@@ -110,7 +111,12 @@ router.post('/qr/verify', (req, res) => {
     }
   })
 
-  verifyTx()
+  try {
+    verifyTx()
+  } catch (err) {
+    console.error('[QR 인증 오류]', err.message)
+    return res.status(500).json({ ok: false, message: 'QR 인증 중 오류가 발생했습니다.' })
+  }
 
   const updatedUser = db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
   res.json({

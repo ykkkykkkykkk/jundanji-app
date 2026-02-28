@@ -16,11 +16,18 @@ function findOrCreateSocialUser(provider, providerId, nickname) {
   let user = db.prepare('SELECT * FROM users WHERE provider = ? AND provider_id = ?').get(provider, providerId)
   let isNew = false
   if (!user) {
-    const { lastInsertRowid: userId } = db.prepare(
-      'INSERT INTO users (nickname, provider, provider_id) VALUES (?, ?, ?)'
-    ).run(nickname, provider, providerId)
-    user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId)
-    isNew = true
+    try {
+      const { lastInsertRowid: userId } = db.prepare(
+        'INSERT INTO users (nickname, provider, provider_id) VALUES (?, ?, ?)'
+      ).run(nickname, provider, providerId)
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId)
+      isNew = true
+    } catch (err) {
+      console.error('[소셜 유저 생성 오류]', err.message)
+      // 재시도: provider_id로 다시 조회
+      user = db.prepare('SELECT * FROM users WHERE provider = ? AND provider_id = ?').get(provider, providerId)
+      if (!user) throw err
+    }
   }
   return { user, isNew }
 }

@@ -205,7 +205,12 @@ router.patch('/withdrawals/:id/status', requireAdmin, (req, res) => {
         VALUES (?, ?, 'use', '포인트 출금')
       `).run(withdrawal.user_id, withdrawal.amount)
     })
-    tx()
+    try {
+      tx()
+    } catch (err) {
+      console.error('[출금 처리 오류]', err.message)
+      return res.status(500).json({ ok: false, message: '출금 처리 중 오류가 발생했습니다.' })
+    }
   } else {
     db.prepare('UPDATE withdrawals SET status = ?, processed_at = ? WHERE id = ?').run(status, now, id)
   }

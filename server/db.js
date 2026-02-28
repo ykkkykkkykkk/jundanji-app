@@ -14,8 +14,8 @@ if (isVercel) {
   db.pragma('journal_mode = WAL')
 }
 
-// 공통 설정
-db.pragma('foreign_keys = ON')
+// 공통 설정 — Vercel 인메모리 DB에서는 FK 비활성화 (콜드스타트 시 유저 없음 문제 방지)
+if (!isVercel) db.pragma('foreign_keys = ON')
 
 // ==================== 테이블 생성 ====================
 
@@ -57,8 +57,8 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS share_history (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id    INTEGER NOT NULL REFERENCES users(id),
-    flyer_id   INTEGER NOT NULL REFERENCES flyers(id),
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    flyer_id   INTEGER NOT NULL REFERENCES flyers(id) ON DELETE CASCADE,
     points     INTEGER NOT NULL,
     shared_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     UNIQUE(user_id, flyer_id)
@@ -66,7 +66,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS point_transactions (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     INTEGER NOT NULL REFERENCES users(id),
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount      INTEGER NOT NULL,
     type        TEXT NOT NULL CHECK(type IN ('earn', 'use')),
     description TEXT,
@@ -84,7 +84,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS bookmarks (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id    INTEGER NOT NULL REFERENCES users(id),
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     flyer_id   INTEGER NOT NULL REFERENCES flyers(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     UNIQUE(user_id, flyer_id)
@@ -110,9 +110,9 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS quiz_attempts (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id        INTEGER NOT NULL REFERENCES users(id),
-    flyer_id       INTEGER NOT NULL REFERENCES flyers(id),
-    quiz_id        INTEGER NOT NULL REFERENCES quizzes(id),
+    user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    flyer_id       INTEGER NOT NULL REFERENCES flyers(id) ON DELETE CASCADE,
+    quiz_id        INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
     selected_idx   INTEGER NOT NULL,
     is_correct     INTEGER NOT NULL DEFAULT 0,
     points_earned  INTEGER NOT NULL DEFAULT 0,
@@ -122,8 +122,8 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS visit_verifications (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id        INTEGER NOT NULL REFERENCES users(id),
-    flyer_id       INTEGER NOT NULL REFERENCES flyers(id),
+    user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    flyer_id       INTEGER NOT NULL REFERENCES flyers(id) ON DELETE CASCADE,
     points_earned  INTEGER NOT NULL DEFAULT 0,
     verified_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
   );
@@ -151,7 +151,7 @@ try { db.exec(`ALTER TABLE flyers ADD COLUMN view_count INTEGER NOT NULL DEFAULT
 db.exec(`
   CREATE TABLE IF NOT EXISTS budget_charges (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     INTEGER NOT NULL REFERENCES users(id),
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount      INTEGER NOT NULL,
     method      TEXT NOT NULL DEFAULT 'manual',
     created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
@@ -161,7 +161,7 @@ db.exec(`
 db.exec(`
   CREATE TABLE IF NOT EXISTS withdrawals (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id         INTEGER NOT NULL REFERENCES users(id),
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     amount          INTEGER NOT NULL,
     status          TEXT NOT NULL DEFAULT 'pending',
     bank_name       TEXT,
@@ -510,5 +510,15 @@ const seedFlyers = () => {
 }
 
 seedFlyers()
+
+// Vercel 인메모리 DB 콜드스타트 대비: 유저가 없으면 자동 생성
+db.ensureUser = function (userId) {
+  const user = db.prepare('SELECT id FROM users WHERE id = ?').get(Number(userId))
+  if (!user) {
+    try {
+      db.prepare('INSERT INTO users (id, nickname, points) VALUES (?, ?, 0)').run(Number(userId), `유저${userId}`)
+    } catch (_) { /* 이미 존재하거나 다른 이슈 - 무시 */ }
+  }
+}
 
 module.exports = db

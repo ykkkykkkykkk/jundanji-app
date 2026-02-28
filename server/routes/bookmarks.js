@@ -52,9 +52,15 @@ router.post('/bookmarks', (req, res) => {
   const flyer = db.prepare('SELECT id FROM flyers WHERE id = ?').get(flyerId)
   if (!flyer) return res.status(404).json({ ok: false, message: '전단지를 찾을 수 없습니다.' })
 
-  db.prepare(
-    'INSERT OR IGNORE INTO bookmarks (user_id, flyer_id) VALUES (?, ?)'
-  ).run(userId, flyerId)
+  db.ensureUser(userId)
+  try {
+    db.prepare(
+      'INSERT OR IGNORE INTO bookmarks (user_id, flyer_id) VALUES (?, ?)'
+    ).run(userId, flyerId)
+  } catch (err) {
+    console.error('[북마크 추가 오류]', err.message)
+    return res.status(500).json({ ok: false, message: '북마크 추가 중 오류가 발생했습니다.' })
+  }
 
   res.json({ ok: true })
 })

@@ -123,7 +123,12 @@ router.post('/charge-points', authMiddleware, (req, res) => {
     `).run(userId, chargeAmount)
   })
 
-  chargeTx()
+  try {
+    chargeTx()
+  } catch (err) {
+    console.error('[포인트 충전 오류]', err.message)
+    return res.status(500).json({ ok: false, message: '포인트 충전 중 오류가 발생했습니다.' })
+  }
 
   const updated = db.prepare('SELECT point_budget FROM users WHERE id = ?').get(userId)
   res.json({ ok: true, data: { pointBudget: updated.point_budget, chargedAmount: chargeAmount } })
