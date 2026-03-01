@@ -6,15 +6,15 @@ const router = Router()
 // 공유 처리 (포인트 적립)
 // POST /api/share
 // body: { userId, flyerId }
-router.post('/share', (req, res) => {
+router.post('/share', async (req, res) => {
   const { userId, flyerId } = req.body
 
   if (!userId || !flyerId) {
     return res.status(400).json({ ok: false, message: 'userId, flyerId 필수입니다.' })
   }
 
-  db.ensureUser(userId)
-  const user = db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId)
+  await db.ensureUser(userId)
+  const user = await db.prepare('SELECT id, role FROM users WHERE id = ?').get(userId)
   if (!user) {
     return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
   }
@@ -24,21 +24,21 @@ router.post('/share', (req, res) => {
     return res.status(403).json({ ok: false, message: '사업자 계정은 포인트를 획득할 수 없습니다.' })
   }
 
-  const flyer = db.prepare('SELECT id, share_point, owner_id FROM flyers WHERE id = ?').get(flyerId)
+  const flyer = await db.prepare('SELECT id, share_point, owner_id FROM flyers WHERE id = ?').get(flyerId)
   if (!flyer) {
     return res.status(404).json({ ok: false, message: '전단지를 찾을 수 없습니다.' })
   }
 
   // 사업자 예산 부족 체크
   if (flyer.owner_id) {
-    const owner = db.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyer.owner_id)
+    const owner = await db.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyer.owner_id)
     if (owner && owner.point_budget < flyer.share_point) {
       return res.status(400).json({ ok: false, message: '이 전단지의 포인트 예산이 소진되었습니다.' })
     }
   }
 
   // 중복 공유 체크
-  const alreadyShared = db.prepare(
+  const alreadyShared = await db.prepare(
     'SELECT id FROM share_history WHERE user_id = ? AND flyer_id = ?'
   ).get(userId, flyerId)
 
@@ -49,38 +49,38 @@ router.post('/share', (req, res) => {
   const earnedPoints = flyer.share_point
 
   // 트랜잭션으로 공유 내역 + 포인트 적립 + shareCount +1 처리
-  const shareTx = db.transaction(() => {
-    db.prepare(
+  const shareTx = db.transaction(async (txDb) => {
+    await txDb.prepare(
       'INSERT INTO share_history (user_id, flyer_id, points) VALUES (?, ?, ?)'
     ).run(userId, flyerId, earnedPoints)
 
-    db.prepare(
+    await txDb.prepare(
       'UPDATE users SET points = points + ? WHERE id = ?'
     ).run(earnedPoints, userId)
 
-    db.prepare(
+    await txDb.prepare(
       'UPDATE flyers SET share_count = share_count + 1 WHERE id = ?'
     ).run(flyerId)
 
-    db.prepare(
+    await txDb.prepare(
       'INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)'
     ).run(userId, earnedPoints, 'earn', `전단지 공유 - flyerId:${flyerId}`)
 
     // 사업자 예산 차감
     if (flyer.owner_id) {
-      db.prepare('UPDATE users SET point_budget = point_budget - ? WHERE id = ?')
+      await txDb.prepare('UPDATE users SET point_budget = point_budget - ? WHERE id = ?')
         .run(earnedPoints, flyer.owner_id)
     }
   })
 
   try {
-    shareTx()
+    await shareTx()
   } catch (err) {
     console.error('[공유 처리 오류]', err.message)
     return res.status(500).json({ ok: false, message: '공유 처리 중 오류가 발생했습니다.' })
   }
 
-  const updatedUser = db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
+  const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
 
   res.json({
     ok: true,
@@ -93,11 +93,11 @@ router.post('/share', (req, res) => {
 
 // 유저 포인트 조회
 // GET /api/users/:userId/points
-router.get('/users/:userId/points', (req, res) => {
+router.get('/users/:userId/points', async (req, res) => {
   const { userId } = req.params
 
-  db.ensureUser(userId)
-  const user = db.prepare('SELECT id, nickname, points FROM users WHERE id = ?').get(userId)
+  await db.ensureUser(userId)
+  const user = await db.prepare('SELECT id, nickname, points FROM users WHERE id = ?').get(userId)
   if (!user) {
     return res.json({ ok: true, data: { points: 0, nickname: '홍길동' } })
   }
@@ -107,10 +107,10 @@ router.get('/users/:userId/points', (req, res) => {
 
 // 유저 공유 내역 조회
 // GET /api/users/:userId/share-history
-router.get('/users/:userId/share-history', (req, res) => {
+router.get('/users/:userId/share-history', async (req, res) => {
   const { userId } = req.params
 
-  const history = db.prepare(`
+  const history = await db.prepare(`
     SELECT
       sh.id, sh.flyer_id, sh.points, sh.shared_at,
       f.store_name, f.store_emoji, f.store_color, f.title
@@ -136,41 +136,41 @@ router.get('/users/:userId/share-history', (req, res) => {
 
 // 포인트 사용
 // POST /api/points/use  { userId, amount, description }
-router.post('/points/use', (req, res) => {
+router.post('/points/use', async (req, res) => {
   const { userId, amount, description } = req.body
   if (!userId || !amount || amount <= 0) {
     return res.status(400).json({ ok: false, message: 'userId, amount(양수) 필수입니다.' })
   }
 
-  db.ensureUser(userId)
-  const user = db.prepare('SELECT id, points FROM users WHERE id = ?').get(userId)
+  await db.ensureUser(userId)
+  const user = await db.prepare('SELECT id, points FROM users WHERE id = ?').get(userId)
   if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
   if (user.points < amount) {
     return res.status(400).json({ ok: false, message: `포인트가 부족합니다. (보유: ${user.points}P)` })
   }
 
-  const useTx = db.transaction(() => {
-    db.prepare('UPDATE users SET points = points - ? WHERE id = ?').run(amount, userId)
-    db.prepare(
+  const useTx = db.transaction(async (txDb) => {
+    await txDb.prepare('UPDATE users SET points = points - ? WHERE id = ?').run(amount, userId)
+    await txDb.prepare(
       'INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)'
     ).run(userId, amount, 'use', description || '포인트 사용')
   })
   try {
-    useTx()
+    await useTx()
   } catch (err) {
     console.error('[포인트 사용 오류]', err.message)
     return res.status(500).json({ ok: false, message: '포인트 사용 중 오류가 발생했습니다.' })
   }
 
-  const updated = db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
+  const updated = await db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
   res.json({ ok: true, data: { usedPoints: amount, remainPoints: updated.points } })
 })
 
 // 포인트 거래 내역
 // GET /api/users/:userId/point-history
-router.get('/users/:userId/point-history', (req, res) => {
+router.get('/users/:userId/point-history', async (req, res) => {
   const { userId } = req.params
-  const history = db.prepare(`
+  const history = await db.prepare(`
     SELECT id, amount, type, description, created_at
     FROM point_transactions
     WHERE user_id = ?

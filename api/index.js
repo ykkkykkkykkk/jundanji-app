@@ -1,19 +1,16 @@
 // Vercel Serverless Function 진입점
-// sql.js (순수 JS SQLite) 초기화 후 Express 앱 위임
-
-// WASM 대신 ASM.js 버전 사용 (파일 로딩 불필요, Vercel 서버리스 호환)
-const initSqlJs = require('sql.js/dist/sql-asm.js')
+// Turso (libSQL) 영구 DB 연결 후 Express 앱 위임
 
 let app = null
 
 module.exports = async (req, res) => {
   try {
     if (!app) {
-      // sql.js 초기화 + 인메모리 DB 생성
-      const SQL = await initSqlJs()
-      global.__sqlJsDb = new SQL.Database()
+      // DB 초기화 대기 (스키마 + 시드)
+      const db = require('../server/db')
+      await db._initPromise
 
-      // Express 앱 로드 (내부에서 db.js가 global.__sqlJsDb를 사용)
+      // Express 앱 로드
       app = require('../server/app')
     }
 

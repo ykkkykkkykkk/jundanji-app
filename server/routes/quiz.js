@@ -6,16 +6,16 @@ const router = Router()
 
 // 퀴즈 일괄 등록 (사업자 전용)
 // POST /api/flyers/:flyerId/quizzes
-router.post('/flyers/:flyerId/quizzes', authMiddleware, (req, res) => {
+router.post('/flyers/:flyerId/quizzes', authMiddleware, async (req, res) => {
   const { flyerId } = req.params
   const { quizzes } = req.body
 
-  const user = db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.userId)
+  const user = await db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.userId)
   if (!user || user.role !== 'business') {
     return res.status(403).json({ ok: false, message: '사업자만 퀴즈를 등록할 수 있습니다.' })
   }
 
-  const flyer = db.prepare('SELECT id, owner_id FROM flyers WHERE id = ?').get(flyerId)
+  const flyer = await db.prepare('SELECT id, owner_id FROM flyers WHERE id = ?').get(flyerId)
   if (!flyer) {
     return res.status(404).json({ ok: false, message: '전단지를 찾을 수 없습니다.' })
   }
@@ -34,19 +34,19 @@ router.post('/flyers/:flyerId/quizzes', authMiddleware, (req, res) => {
     }
   }
 
-  const insertTx = db.transaction(() => {
-    db.prepare('DELETE FROM quizzes WHERE flyer_id = ?').run(flyerId)
-    const insert = db.prepare(`
+  const insertTx = db.transaction(async (txDb) => {
+    await txDb.prepare('DELETE FROM quizzes WHERE flyer_id = ?').run(flyerId)
+    const insert = txDb.prepare(`
       INSERT INTO quizzes (flyer_id, question, answer, point, sort_order)
       VALUES (?, ?, ?, ?, ?)
     `)
-    quizzes.forEach((q, idx) => {
-      insert.run(flyerId, q.question, q.answer.trim(), Number(q.point) || 10, idx)
-    })
+    for (const [idx, q] of quizzes.entries()) {
+      await insert.run(flyerId, q.question, q.answer.trim(), Number(q.point) || 10, idx)
+    }
   })
 
   try {
-    insertTx()
+    await insertTx()
   } catch (err) {
     console.error('[퀴즈 등록 오류]', err.message)
     return res.status(500).json({ ok: false, message: '퀴즈 등록 중 오류가 발생했습니다.' })
@@ -56,9 +56,9 @@ router.post('/flyers/:flyerId/quizzes', authMiddleware, (req, res) => {
 
 // 퀴즈 목록 조회 (사업자용 - 전단지별)
 // GET /api/flyers/:flyerId/quizzes
-router.get('/flyers/:flyerId/quizzes', (req, res) => {
+router.get('/flyers/:flyerId/quizzes', async (req, res) => {
   const { flyerId } = req.params
-  const quizzes = db.prepare('SELECT * FROM quizzes WHERE flyer_id = ? ORDER BY sort_order').all(flyerId)
+  const quizzes = await db.prepare('SELECT * FROM quizzes WHERE flyer_id = ? ORDER BY sort_order').all(flyerId)
   res.json({
     ok: true,
     data: quizzes.map(q => ({
@@ -73,7 +73,7 @@ router.get('/flyers/:flyerId/quizzes', (req, res) => {
 
 // 랜덤 1문제 출제
 // GET /api/flyers/:flyerId/quiz?userId=X
-router.get('/flyers/:flyerId/quiz', (req, res) => {
+router.get('/flyers/:flyerId/quiz', async (req, res) => {
   const { flyerId } = req.params
   const { userId } = req.query
 
@@ -82,13 +82,13 @@ router.get('/flyers/:flyerId/quiz', (req, res) => {
   }
 
   // 사업자 계정은 퀴즈 풀기 불가
-  const quizUser = db.prepare('SELECT role FROM users WHERE id = ?').get(userId)
+  const quizUser = await db.prepare('SELECT role FROM users WHERE id = ?').get(userId)
   if (quizUser && quizUser.role === 'business') {
     return res.status(403).json({ ok: false, message: '사업자 계정은 퀴즈를 풀 수 없습니다.' })
   }
 
   // 이미 응시했는지 확인
-  const attempted = db.prepare(
+  const attempted = await db.prepare(
     'SELECT id FROM quiz_attempts WHERE user_id = ? AND flyer_id = ?'
   ).get(userId, flyerId)
 
@@ -97,7 +97,7 @@ router.get('/flyers/:flyerId/quiz', (req, res) => {
   }
 
   // 랜덤 1문제
-  const quizzes = db.prepare('SELECT * FROM quizzes WHERE flyer_id = ?').all(flyerId)
+  const quizzes = await db.prepare('SELECT * FROM quizzes WHERE flyer_id = ?').all(flyerId)
   if (!quizzes.length) {
     return res.json({ ok: true, data: null, attempted: false })
   }
@@ -116,7 +116,7 @@ router.get('/flyers/:flyerId/quiz', (req, res) => {
 
 // 퀴즈 정답 제출
 // POST /api/quiz/attempt
-router.post('/quiz/attempt', (req, res) => {
+router.post('/quiz/attempt', async (req, res) => {
   const { userId, flyerId, quizId, answer } = req.body
 
   if (!userId || !flyerId || !quizId || !answer) {
@@ -124,28 +124,28 @@ router.post('/quiz/attempt', (req, res) => {
   }
 
   // 사업자 계정은 퀴즈 풀기 불가
-  const attemptUser = db.prepare('SELECT role FROM users WHERE id = ?').get(userId)
+  const attemptUser = await db.prepare('SELECT role FROM users WHERE id = ?').get(userId)
   if (attemptUser && attemptUser.role === 'business') {
     return res.status(403).json({ ok: false, message: '사업자 계정은 퀴즈를 풀 수 없습니다.' })
   }
 
-  db.ensureUser(userId)
-  const user = db.prepare('SELECT id, points FROM users WHERE id = ?').get(userId)
+  await db.ensureUser(userId)
+  const user = await db.prepare('SELECT id, points FROM users WHERE id = ?').get(userId)
   if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
 
-  const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ? AND flyer_id = ?').get(quizId, flyerId)
+  const quiz = await db.prepare('SELECT * FROM quizzes WHERE id = ? AND flyer_id = ?').get(quizId, flyerId)
   if (!quiz) return res.status(404).json({ ok: false, message: '퀴즈를 찾을 수 없습니다.' })
 
   // 이미 응시 체크
-  const existing = db.prepare('SELECT id FROM quiz_attempts WHERE user_id = ? AND flyer_id = ?').get(userId, flyerId)
+  const existing = await db.prepare('SELECT id FROM quiz_attempts WHERE user_id = ? AND flyer_id = ?').get(userId, flyerId)
   if (existing) {
     return res.status(409).json({ ok: false, message: '이미 퀴즈에 참여했습니다.' })
   }
 
   // 사업자 예산 부족 체크
-  const flyerForBudget = db.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyerId)
+  const flyerForBudget = await db.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyerId)
   if (flyerForBudget && flyerForBudget.owner_id) {
-    const owner = db.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyerForBudget.owner_id)
+    const owner = await db.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyerForBudget.owner_id)
     if (owner && owner.point_budget < quiz.point) {
       return res.status(400).json({ ok: false, message: '이 전단지의 포인트 예산이 소진되었습니다.' })
     }
@@ -155,36 +155,36 @@ router.post('/quiz/attempt', (req, res) => {
   const isCorrect = answer.trim().toLowerCase() === quiz.answer.trim().toLowerCase()
   const earnedPoints = isCorrect ? quiz.point : 0
 
-  const attemptTx = db.transaction(() => {
-    db.prepare(`
+  const attemptTx = db.transaction(async (txDb) => {
+    await txDb.prepare(`
       INSERT INTO quiz_attempts (user_id, flyer_id, quiz_id, selected_idx, is_correct, points_earned)
       VALUES (?, ?, ?, 0, ?, ?)
     `).run(userId, flyerId, quizId, isCorrect ? 1 : 0, earnedPoints)
 
     if (isCorrect) {
-      db.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(earnedPoints, userId)
-      db.prepare(`
+      await txDb.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(earnedPoints, userId)
+      await txDb.prepare(`
         INSERT INTO point_transactions (user_id, amount, type, description)
         VALUES (?, ?, 'earn', ?)
       `).run(userId, earnedPoints, `퀴즈 정답 (${quiz.question.slice(0, 20)}...)`)
 
       // 사업자 예산 차감
-      const flyerOwner = db.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyerId)
+      const flyerOwner = await txDb.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyerId)
       if (flyerOwner && flyerOwner.owner_id) {
-        db.prepare('UPDATE users SET point_budget = point_budget - ? WHERE id = ?')
+        await txDb.prepare('UPDATE users SET point_budget = point_budget - ? WHERE id = ?')
           .run(earnedPoints, flyerOwner.owner_id)
       }
     }
   })
 
   try {
-    attemptTx()
+    await attemptTx()
   } catch (err) {
     console.error('[퀴즈 응시 오류]', err.message)
     return res.status(500).json({ ok: false, message: '퀴즈 응시 중 오류가 발생했습니다.' })
   }
 
-  const updatedUser = db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
+  const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
   res.json({
     ok: true,
     data: {
@@ -198,10 +198,10 @@ router.post('/quiz/attempt', (req, res) => {
 
 // 퀴즈 응시 내역
 // GET /api/users/:userId/quiz-history
-router.get('/users/:userId/quiz-history', (req, res) => {
+router.get('/users/:userId/quiz-history', async (req, res) => {
   const { userId } = req.params
 
-  const history = db.prepare(`
+  const history = await db.prepare(`
     SELECT qa.id, qa.flyer_id, qa.quiz_id, qa.is_correct,
            qa.points_earned, qa.attempted_at,
            q.question, q.answer,

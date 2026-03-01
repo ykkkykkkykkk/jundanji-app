@@ -5,10 +5,10 @@ const router = Router()
 
 // 즐겨찾기 목록 조회 (전단지 전체 정보 포함)
 // GET /api/users/:userId/bookmarks
-router.get('/users/:userId/bookmarks', (req, res) => {
+router.get('/users/:userId/bookmarks', async (req, res) => {
   const { userId } = req.params
 
-  const rows = db.prepare(`
+  const rows = await db.prepare(`
     SELECT
       f.id, f.store_name, f.store_emoji, f.store_color, f.store_bg_color,
       f.category, f.title, f.subtitle, f.valid_from, f.valid_until,
@@ -43,18 +43,18 @@ router.get('/users/:userId/bookmarks', (req, res) => {
 
 // 즐겨찾기 추가
 // POST /api/bookmarks  { userId, flyerId }
-router.post('/bookmarks', (req, res) => {
+router.post('/bookmarks', async (req, res) => {
   const { userId, flyerId } = req.body
   if (!userId || !flyerId) {
     return res.status(400).json({ ok: false, message: 'userId, flyerId 필수입니다.' })
   }
 
-  const flyer = db.prepare('SELECT id FROM flyers WHERE id = ?').get(flyerId)
+  const flyer = await db.prepare('SELECT id FROM flyers WHERE id = ?').get(flyerId)
   if (!flyer) return res.status(404).json({ ok: false, message: '전단지를 찾을 수 없습니다.' })
 
-  db.ensureUser(userId)
+  await db.ensureUser(userId)
   try {
-    db.prepare(
+    await db.prepare(
       'INSERT OR IGNORE INTO bookmarks (user_id, flyer_id) VALUES (?, ?)'
     ).run(userId, flyerId)
   } catch (err) {
@@ -67,12 +67,12 @@ router.post('/bookmarks', (req, res) => {
 
 // 즐겨찾기 취소
 // DELETE /api/bookmarks/:flyerId  { userId }
-router.delete('/bookmarks/:flyerId', (req, res) => {
+router.delete('/bookmarks/:flyerId', async (req, res) => {
   const { flyerId } = req.params
   const { userId } = req.body
   if (!userId) return res.status(400).json({ ok: false, message: 'userId 필수입니다.' })
 
-  db.prepare(
+  await db.prepare(
     'DELETE FROM bookmarks WHERE user_id = ? AND flyer_id = ?'
   ).run(userId, flyerId)
 

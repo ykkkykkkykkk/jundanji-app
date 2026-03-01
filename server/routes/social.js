@@ -12,20 +12,21 @@ function signToken(userId) {
   })
 }
 
-function findOrCreateSocialUser(provider, providerId, nickname) {
-  let user = db.prepare('SELECT * FROM users WHERE provider = ? AND provider_id = ?').get(provider, providerId)
+async function findOrCreateSocialUser(provider, providerId, nickname) {
+  let user = await db.prepare('SELECT * FROM users WHERE provider = ? AND provider_id = ?').get(provider, providerId)
   let isNew = false
   if (!user) {
     try {
-      const { lastInsertRowid: userId } = db.prepare(
+      const result = await db.prepare(
         'INSERT INTO users (nickname, provider, provider_id) VALUES (?, ?, ?)'
       ).run(nickname, provider, providerId)
-      user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId)
+      const userId = result.lastInsertRowid
+      user = await db.prepare('SELECT * FROM users WHERE id = ?').get(userId)
       isNew = true
     } catch (err) {
       console.error('[소셜 유저 생성 오류]', err.message)
       // 재시도: provider_id로 다시 조회
-      user = db.prepare('SELECT * FROM users WHERE provider = ? AND provider_id = ?').get(provider, providerId)
+      user = await db.prepare('SELECT * FROM users WHERE provider = ? AND provider_id = ?').get(provider, providerId)
       if (!user) throw err
     }
   }
@@ -83,7 +84,7 @@ router.get('/kakao/callback', async (req, res) => {
     const nickname = profile.kakao_account?.profile?.nickname || `카카오유저${kakaoId.slice(-4)}`
 
     // 3. DB 유저 찾기 / 생성
-    const { user, isNew } = findOrCreateSocialUser('kakao', kakaoId, nickname)
+    const { user, isNew } = await findOrCreateSocialUser('kakao', kakaoId, nickname)
 
     const token = signToken(user.id)
     res.redirect(
@@ -113,7 +114,7 @@ router.post('/kakao/token', async (req, res) => {
     const kakaoId = String(profile.id)
     const nickname = profile.kakao_account?.profile?.nickname || `카카오유저${kakaoId.slice(-4)}`
 
-    const { user, isNew } = findOrCreateSocialUser('kakao', kakaoId, nickname)
+    const { user, isNew } = await findOrCreateSocialUser('kakao', kakaoId, nickname)
 
     const token = signToken(user.id)
     res.json({
@@ -171,7 +172,7 @@ router.get('/google/callback', async (req, res) => {
     const googleId = profile.sub
     const nickname = profile.name || `구글유저${googleId.slice(-4)}`
 
-    const { user, isNew } = findOrCreateSocialUser('google', googleId, nickname)
+    const { user, isNew } = await findOrCreateSocialUser('google', googleId, nickname)
 
     const token = signToken(user.id)
     res.redirect(

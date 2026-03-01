@@ -37,18 +37,22 @@ router.post('/login', (req, res) => {
 
 // ======================== 대시보드 ========================
 
-router.get('/dashboard', requireAdmin, (req, res) => {
-  const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count
-  const totalFlyers = db.prepare('SELECT COUNT(*) as count FROM flyers').get().count
-  const totalPoints = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM point_transactions WHERE type = ?').get('earn').total
-  const totalScratches = db.prepare('SELECT COUNT(*) as count FROM share_history').get().count
+router.get('/dashboard', requireAdmin, async (req, res) => {
+  const totalUsersRow = await db.prepare('SELECT COUNT(*) as count FROM users').get()
+  const totalUsers = totalUsersRow.count
+  const totalFlyersRow = await db.prepare('SELECT COUNT(*) as count FROM flyers').get()
+  const totalFlyers = totalFlyersRow.count
+  const totalPointsRow = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM point_transactions WHERE type = ?').get('earn')
+  const totalPoints = totalPointsRow.total
+  const totalScratchesRow = await db.prepare('SELECT COUNT(*) as count FROM share_history').get()
+  const totalScratches = totalScratchesRow.count
 
-  const recentUsers = db.prepare(`
+  const recentUsers = await db.prepare(`
     SELECT id, nickname, email, role, status, created_at
     FROM users ORDER BY created_at DESC LIMIT 5
   `).all()
 
-  const recentFlyers = db.prepare(`
+  const recentFlyers = await db.prepare(`
     SELECT id, store_name, category, title, status, created_at
     FROM flyers ORDER BY created_at DESC LIMIT 5
   `).all()
@@ -63,7 +67,7 @@ router.get('/dashboard', requireAdmin, (req, res) => {
 
 // ======================== 전단지 관리 ========================
 
-router.get('/flyers', requireAdmin, (req, res) => {
+router.get('/flyers', requireAdmin, async (req, res) => {
   const { page = 1, limit = 20, search = '', status = '' } = req.query
   const offset = (page - 1) * limit
 
@@ -79,9 +83,10 @@ router.get('/flyers', requireAdmin, (req, res) => {
     params.push(status)
   }
 
-  const total = db.prepare(`SELECT COUNT(*) as count FROM flyers f ${where}`).get(...params).count
+  const totalRow = await db.prepare(`SELECT COUNT(*) as count FROM flyers f ${where}`).get(...params)
+  const total = totalRow.count
 
-  const flyers = db.prepare(`
+  const flyers = await db.prepare(`
     SELECT f.*, u.nickname as owner_name
     FROM flyers f
     LEFT JOIN users u ON f.owner_id = u.id
@@ -93,7 +98,7 @@ router.get('/flyers', requireAdmin, (req, res) => {
   res.json({ ok: true, flyers, total, page: Number(page), limit: Number(limit) })
 })
 
-router.patch('/flyers/:id/status', requireAdmin, (req, res) => {
+router.patch('/flyers/:id/status', requireAdmin, async (req, res) => {
   const { id } = req.params
   const { status } = req.body
 
@@ -101,13 +106,13 @@ router.patch('/flyers/:id/status', requireAdmin, (req, res) => {
     return res.status(400).json({ ok: false, message: '유효하지 않은 상태입니다.' })
   }
 
-  db.prepare('UPDATE flyers SET status = ? WHERE id = ?').run(status, id)
+  await db.prepare('UPDATE flyers SET status = ? WHERE id = ?').run(status, id)
   res.json({ ok: true, message: `전단지 상태가 '${status}'로 변경되었습니다.` })
 })
 
 // ======================== 유저 관리 ========================
 
-router.get('/users', requireAdmin, (req, res) => {
+router.get('/users', requireAdmin, async (req, res) => {
   const { page = 1, limit = 20, search = '', role = '' } = req.query
   const offset = (page - 1) * limit
 
@@ -123,9 +128,10 @@ router.get('/users', requireAdmin, (req, res) => {
     params.push(role)
   }
 
-  const total = db.prepare(`SELECT COUNT(*) as count FROM users ${where}`).get(...params).count
+  const totalRow = await db.prepare(`SELECT COUNT(*) as count FROM users ${where}`).get(...params)
+  const total = totalRow.count
 
-  const users = db.prepare(`
+  const users = await db.prepare(`
     SELECT id, nickname, email, role, points, status, business_approved, created_at
     FROM users
     ${where}
@@ -136,7 +142,7 @@ router.get('/users', requireAdmin, (req, res) => {
   res.json({ ok: true, users, total, page: Number(page), limit: Number(limit) })
 })
 
-router.patch('/users/:id/status', requireAdmin, (req, res) => {
+router.patch('/users/:id/status', requireAdmin, async (req, res) => {
   const { id } = req.params
   const { status } = req.body
 
@@ -144,13 +150,13 @@ router.patch('/users/:id/status', requireAdmin, (req, res) => {
     return res.status(400).json({ ok: false, message: '유효하지 않은 상태입니다.' })
   }
 
-  db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, id)
+  await db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, id)
   res.json({ ok: true, message: `유저 상태가 '${status}'로 변경되었습니다.` })
 })
 
 // ======================== 포인트 정산 ========================
 
-router.get('/withdrawals', requireAdmin, (req, res) => {
+router.get('/withdrawals', requireAdmin, async (req, res) => {
   const { page = 1, limit = 20, status = '' } = req.query
   const offset = (page - 1) * limit
 
@@ -162,9 +168,10 @@ router.get('/withdrawals', requireAdmin, (req, res) => {
     params.push(status)
   }
 
-  const total = db.prepare(`SELECT COUNT(*) as count FROM withdrawals w ${where}`).get(...params).count
+  const totalRow = await db.prepare(`SELECT COUNT(*) as count FROM withdrawals w ${where}`).get(...params)
+  const total = totalRow.count
 
-  const withdrawals = db.prepare(`
+  const withdrawals = await db.prepare(`
     SELECT w.*, u.nickname, u.email
     FROM withdrawals w
     JOIN users u ON w.user_id = u.id
@@ -176,7 +183,7 @@ router.get('/withdrawals', requireAdmin, (req, res) => {
   res.json({ ok: true, withdrawals, total, page: Number(page), limit: Number(limit) })
 })
 
-router.patch('/withdrawals/:id/status', requireAdmin, (req, res) => {
+router.patch('/withdrawals/:id/status', requireAdmin, async (req, res) => {
   const { id } = req.params
   const { status } = req.body
 
@@ -184,7 +191,7 @@ router.patch('/withdrawals/:id/status', requireAdmin, (req, res) => {
     return res.status(400).json({ ok: false, message: '유효하지 않은 상태입니다.' })
   }
 
-  const withdrawal = db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(id)
+  const withdrawal = await db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(id)
   if (!withdrawal) {
     return res.status(404).json({ ok: false, message: '출금 신청을 찾을 수 없습니다.' })
   }
@@ -192,27 +199,27 @@ router.patch('/withdrawals/:id/status', requireAdmin, (req, res) => {
   const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).replace('T', ' ')
 
   if (status === 'approved') {
-    const user = db.prepare('SELECT points FROM users WHERE id = ?').get(withdrawal.user_id)
+    const user = await db.prepare('SELECT points FROM users WHERE id = ?').get(withdrawal.user_id)
     if (user.points < withdrawal.amount) {
       return res.status(400).json({ ok: false, message: '유저 포인트가 부족합니다.' })
     }
 
-    const tx = db.transaction(() => {
-      db.prepare('UPDATE withdrawals SET status = ?, processed_at = ? WHERE id = ?').run(status, now, id)
-      db.prepare('UPDATE users SET points = points - ? WHERE id = ?').run(withdrawal.amount, withdrawal.user_id)
-      db.prepare(`
+    const tx = db.transaction(async (txDb) => {
+      await txDb.prepare('UPDATE withdrawals SET status = ?, processed_at = ? WHERE id = ?').run(status, now, id)
+      await txDb.prepare('UPDATE users SET points = points - ? WHERE id = ?').run(withdrawal.amount, withdrawal.user_id)
+      await txDb.prepare(`
         INSERT INTO point_transactions (user_id, amount, type, description)
         VALUES (?, ?, 'use', '포인트 출금')
       `).run(withdrawal.user_id, withdrawal.amount)
     })
     try {
-      tx()
+      await tx()
     } catch (err) {
       console.error('[출금 처리 오류]', err.message)
       return res.status(500).json({ ok: false, message: '출금 처리 중 오류가 발생했습니다.' })
     }
   } else {
-    db.prepare('UPDATE withdrawals SET status = ?, processed_at = ? WHERE id = ?').run(status, now, id)
+    await db.prepare('UPDATE withdrawals SET status = ?, processed_at = ? WHERE id = ?').run(status, now, id)
   }
 
   res.json({ ok: true, message: `출금 신청이 '${status}'로 처리되었습니다.` })
@@ -220,7 +227,7 @@ router.patch('/withdrawals/:id/status', requireAdmin, (req, res) => {
 
 // ======================== 자영업자 관리 ========================
 
-router.get('/business', requireAdmin, (req, res) => {
+router.get('/business', requireAdmin, async (req, res) => {
   const { page = 1, limit = 20, approved = '' } = req.query
   const offset = (page - 1) * limit
 
@@ -232,9 +239,10 @@ router.get('/business', requireAdmin, (req, res) => {
     params.push(Number(approved))
   }
 
-  const total = db.prepare(`SELECT COUNT(*) as count FROM users ${where}`).get(...params).count
+  const totalRow = await db.prepare(`SELECT COUNT(*) as count FROM users ${where}`).get(...params)
+  const total = totalRow.count
 
-  const businesses = db.prepare(`
+  const businesses = await db.prepare(`
     SELECT id, nickname, email, points, status, business_approved, created_at
     FROM users
     ${where}
@@ -245,11 +253,11 @@ router.get('/business', requireAdmin, (req, res) => {
   res.json({ ok: true, businesses, total, page: Number(page), limit: Number(limit) })
 })
 
-router.patch('/business/:id/approve', requireAdmin, (req, res) => {
+router.patch('/business/:id/approve', requireAdmin, async (req, res) => {
   const { id } = req.params
   const { approved } = req.body
 
-  db.prepare('UPDATE users SET business_approved = ? WHERE id = ? AND role = ?').run(
+  await db.prepare('UPDATE users SET business_approved = ? WHERE id = ? AND role = ?').run(
     approved ? 1 : 0, id, 'business'
   )
   res.json({ ok: true, message: approved ? '자영업자가 승인되었습니다.' : '자영업자 승인이 거절되었습니다.' })
