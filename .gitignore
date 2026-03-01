@@ -5,3 +5,6 @@ dist/
 server/data.db
 server/uploads/
 .vercel/
+auth
+auth-wal
+*.bat
