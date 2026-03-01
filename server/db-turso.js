@@ -39,17 +39,15 @@ class TursoDatabase {
   }
 
   async exec(sql) {
-    // 여러 문장을 ; 로 분할하여 batch 실행
+    // 여러 문장을 ; 로 분할하여 순차 실행
     const statements = sql
       .split(';')
       .map(s => s.trim())
       .filter(Boolean)
     if (statements.length === 0) return
-    // batch로 한 번에 실행 (원자적)
-    await this._client.batch(
-      statements.map(s => ({ sql: s })),
-      'write'
-    )
+    for (const stmt of statements) {
+      await this._client.execute({ sql: stmt, args: [] })
+    }
   }
 
   async pragma(pragmaStr) {
