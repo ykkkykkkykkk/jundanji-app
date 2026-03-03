@@ -112,16 +112,18 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
               <button className="icon-btn" onClick={handleSearchOpen}>🔍</button>
             </div>
           </div>
-          <div className="category-tabs">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
-                onClick={() => setActiveCategory(cat)}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="category-tabs-wrapper">
+            <div className="category-tabs">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
+                  onClick={() => setActiveCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
