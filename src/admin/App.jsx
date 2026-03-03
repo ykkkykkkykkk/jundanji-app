@@ -7,6 +7,7 @@ import FlyersPage from './pages/FlyersPage'
 import UsersPage from './pages/UsersPage'
 import PointsPage from './pages/PointsPage'
 import BusinessPage from './pages/BusinessPage'
+import CategoriesPage from './pages/CategoriesPage'
 
 const pages = {
   dashboard: DashboardPage,
@@ -14,6 +15,7 @@ const pages = {
   users: UsersPage,
   points: PointsPage,
   business: BusinessPage,
+  categories: CategoriesPage,
 }
 
 export default function App() {

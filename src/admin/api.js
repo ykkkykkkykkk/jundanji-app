@@ -70,3 +70,12 @@ export const getBusinesses = (params = {}) => {
 }
 export const approveBusiness = (id, approved) =>
   request(`/business/${id}/approve`, { method: 'PATCH', body: JSON.stringify({ approved }) })
+
+// 카테고리
+export const getCategories = () => request('/categories')
+export const addCategory = (name) =>
+  request('/categories', { method: 'POST', body: JSON.stringify({ name }) })
+export const updateCategory = (id, data) =>
+  request(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+export const deleteCategory = (id) =>
+  request(`/categories/${id}`, { method: 'DELETE' })

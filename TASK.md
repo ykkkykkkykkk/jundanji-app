@@ -212,6 +212,24 @@
 
 ---
 
+## v3.2 카테고리 관리 기능 (2026-03-03) ✅
+
+### 신규 기능
+
+#### 카테고리 CRUD 관리 ✅
+- [x] `server/db.js` — categories 테이블 (name UNIQUE, sort_order) + 시드 11개
+- [x] `server/routes/admin.js` — GET/POST/PATCH/DELETE 4개 엔드포인트
+- [x] `server/routes/flyers.js` — 카테고리 API를 categories 테이블 조회로 변경
+- [x] `src/admin/api.js` — getCategories, addCategory, updateCategory, deleteCategory
+- [x] `src/admin/components/Sidebar.jsx` — 카테고리 관리 메뉴 추가
+- [x] `src/admin/App.jsx` — CategoriesPage 등록
+- [x] `src/admin/pages/CategoriesPage.jsx` — 카테고리 관리 페이지 (DataTable 패턴)
+
+### 카테고리 시드 데이터
+마트, 편의점, 카페, 음식점, 패션, 뷰티, 가전, 온라인, 엔터, 생활용품, **운동**
+
+---
+
 ## 앱 실행 방법
 
 ```bash

@@ -4,6 +4,7 @@ const menuItems = [
   { key: 'users', label: '유저 관리', icon: '👥' },
   { key: 'points', label: '포인트 정산', icon: '💰' },
   { key: 'business', label: '자영업자 관리', icon: '🏪' },
+  { key: 'categories', label: '카테고리 관리', icon: '🏷️' },
 ]
 
 export default function Sidebar({ current, onChange, onLogout }) {

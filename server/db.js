@@ -151,6 +151,12 @@ const schemaSQL = `
     account_holder  TEXT,
     created_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     processed_at    TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS categories (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL UNIQUE,
+    sort_order  INTEGER NOT NULL DEFAULT 0
   )
 `
 
@@ -501,7 +507,23 @@ async function initialize() {
       `).run(q.flyerId, q.question, q.answer, q.point, idx % 3)
     }
 
-    console.log('[DB] 시드 데이터 삽입 완료 (전단지 20개, 알림 5개, 퀴즈 9개)')
+    // 카테고리 시드
+    const categorySeed = ['마트', '편의점', '카페', '음식점', '패션', '뷰티', '가전', '온라인', '엔터', '생활용품', '운동']
+    for (let i = 0; i < categorySeed.length; i++) {
+      await db.prepare('INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, ?)').run(categorySeed[i], i)
+    }
+
+    console.log('[DB] 시드 데이터 삽입 완료 (전단지 20개, 알림 5개, 퀴즈 9개, 카테고리 11개)')
+  }
+
+  // 3.5 카테고리 테이블이 비어있으면 시드 (기존 DB 마이그레이션)
+  const catCount = await db.prepare('SELECT COUNT(*) as cnt FROM categories').get()
+  if (!catCount || catCount.cnt === 0) {
+    const categorySeed = ['마트', '편의점', '카페', '음식점', '패션', '뷰티', '가전', '온라인', '엔터', '생활용품', '운동']
+    for (let i = 0; i < categorySeed.length; i++) {
+      await db.prepare('INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, ?)').run(categorySeed[i], i)
+    }
+    console.log('[DB] 카테고리 시드 데이터 삽입 완료')
   }
 
   // 4. ensureUser 헬퍼 등록

@@ -226,14 +226,21 @@ body {
 }
 
 /* 카테고리 탭 */
+.category-tabs-wrapper {
+  margin: 0 -20px;
+  overflow: hidden;
+}
+
 .category-tabs {
   display: flex;
   gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
+  overflow-x: scroll;
+  padding: 0 20px 4px;
   scrollbar-width: none;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
+  cursor: grab;
+  user-select: none;
 }
 
 .category-tabs::-webkit-scrollbar {
@@ -241,7 +248,7 @@ body {
 }
 
 .category-tab {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   padding: 6px 14px;
   border-radius: 20px;
   border: 1.5px solid var(--border-main);
@@ -251,6 +258,7 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .category-tab.active {

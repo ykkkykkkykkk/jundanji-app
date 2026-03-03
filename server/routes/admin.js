@@ -263,4 +263,77 @@ router.patch('/business/:id/approve', requireAdmin, async (req, res) => {
   res.json({ ok: true, message: approved ? '자영업자가 승인되었습니다.' : '자영업자 승인이 거절되었습니다.' })
 })
 
+// ======================== 카테고리 관리 ========================
+
+router.get('/categories', requireAdmin, async (req, res) => {
+  const categories = await db.prepare('SELECT * FROM categories ORDER BY sort_order ASC, id ASC').all()
+  res.json({ ok: true, categories })
+})
+
+router.post('/categories', requireAdmin, async (req, res) => {
+  const { name } = req.body
+  if (!name || !name.trim()) {
+    return res.status(400).json({ ok: false, message: '카테고리 이름을 입력하세요.' })
+  }
+
+  try {
+    const maxOrder = await db.prepare('SELECT COALESCE(MAX(sort_order), -1) as max_order FROM categories').get()
+    await db.prepare('INSERT INTO categories (name, sort_order) VALUES (?, ?)').run(name.trim(), maxOrder.max_order + 1)
+    res.status(201).json({ ok: true, message: '카테고리가 추가되었습니다.' })
+  } catch (err) {
+    if (err.message && err.message.includes('UNIQUE')) {
+      return res.status(409).json({ ok: false, message: '이미 존재하는 카테고리입니다.' })
+    }
+    throw err
+  }
+})
+
+router.patch('/categories/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params
+  const { name, sortOrder } = req.body
+
+  const existing = await db.prepare('SELECT * FROM categories WHERE id = ?').get(id)
+  if (!existing) {
+    return res.status(404).json({ ok: false, message: '카테고리를 찾을 수 없습니다.' })
+  }
+
+  const newName = name !== undefined ? name.trim() : existing.name
+  const newOrder = sortOrder !== undefined ? Number(sortOrder) : existing.sort_order
+
+  if (!newName) {
+    return res.status(400).json({ ok: false, message: '카테고리 이름을 입력하세요.' })
+  }
+
+  try {
+    await db.prepare('UPDATE categories SET name = ?, sort_order = ? WHERE id = ?').run(newName, newOrder, id)
+    res.json({ ok: true, message: '카테고리가 수정되었습니다.' })
+  } catch (err) {
+    if (err.message && err.message.includes('UNIQUE')) {
+      return res.status(409).json({ ok: false, message: '이미 존재하는 카테고리입니다.' })
+    }
+    throw err
+  }
+})
+
+router.delete('/categories/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params
+
+  const existing = await db.prepare('SELECT * FROM categories WHERE id = ?').get(id)
+  if (!existing) {
+    return res.status(404).json({ ok: false, message: '카테고리를 찾을 수 없습니다.' })
+  }
+
+  // 해당 카테고리를 사용하는 전단지가 있는지 확인
+  const flyerCount = await db.prepare('SELECT COUNT(*) as cnt FROM flyers WHERE category = ?').get(existing.name)
+  if (flyerCount.cnt > 0) {
+    return res.status(409).json({
+      ok: false,
+      message: `이 카테고리를 사용하는 전단지가 ${flyerCount.cnt}개 있습니다. 먼저 전단지의 카테고리를 변경해주세요.`,
+    })
+  }
+
+  await db.prepare('DELETE FROM categories WHERE id = ?').run(id)
+  res.json({ ok: true, message: '카테고리가 삭제되었습니다.' })
+})
+
 module.exports = router

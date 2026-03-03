@@ -52,13 +52,11 @@ function parseItems(items) {
   try { return JSON.parse(items) } catch { return [] }
 }
 
-// 카테고리 목록 (만료되지 않은 전단지 기준)
+// 카테고리 목록 (categories 테이블에서 조회)
 // GET /api/flyers/categories
 router.get('/categories', async (req, res) => {
-  const rows = await db.prepare(
-    "SELECT DISTINCT category FROM flyers WHERE REPLACE(valid_until, '.', '-') >= date('now', 'localtime') ORDER BY category"
-  ).all()
-  res.json({ ok: true, data: rows.map(r => r.category) })
+  const rows = await db.prepare('SELECT name FROM categories ORDER BY sort_order ASC, id ASC').all()
+  res.json({ ok: true, data: rows.map(r => r.name) })
 })
 
 // 전단지 목록 조회

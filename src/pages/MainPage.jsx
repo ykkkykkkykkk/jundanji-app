@@ -37,6 +37,10 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
   const [searchQuery, setSearchQuery] = useState('')
   const searchInputRef = useRef(null)
   const sentinelRef = useRef(null)
+  const tabsRef = useRef(null)
+  const isDragging = useRef(false)
+  const startX = useRef(0)
+  const scrollLeft = useRef(0)
 
   // 카테고리 목록 로드
   useEffect(() => {
@@ -89,6 +93,25 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
     return () => observer.disconnect()
   }, [loadMore])
 
+  // 카테고리 탭 드래그 스크롤
+  const handleTabMouseDown = (e) => {
+    isDragging.current = true
+    startX.current = e.pageX || e.touches?.[0]?.pageX
+    scrollLeft.current = tabsRef.current.scrollLeft
+    tabsRef.current.style.cursor = 'grabbing'
+  }
+  const handleTabMouseMove = (e) => {
+    if (!isDragging.current) return
+    e.preventDefault()
+    const x = e.pageX || e.touches?.[0]?.pageX
+    const walk = (startX.current - x) * 1.5
+    tabsRef.current.scrollLeft = scrollLeft.current + walk
+  }
+  const handleTabMouseUp = () => {
+    isDragging.current = false
+    if (tabsRef.current) tabsRef.current.style.cursor = 'grab'
+  }
+
   const handleSearchOpen = () => {
     setSearchOpen(true)
     setTimeout(() => searchInputRef.current?.focus(), 50)
@@ -118,16 +141,28 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
               <button className="icon-btn" onClick={handleSearchOpen}>🔍</button>
             </div>
           </div>
-          <div className="category-tabs">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
-                onClick={() => setActiveCategory(cat)}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="category-tabs-wrapper">
+            <div
+              className="category-tabs"
+              ref={tabsRef}
+              onMouseDown={handleTabMouseDown}
+              onMouseMove={handleTabMouseMove}
+              onMouseUp={handleTabMouseUp}
+              onMouseLeave={handleTabMouseUp}
+              onTouchStart={handleTabMouseDown}
+              onTouchMove={handleTabMouseMove}
+              onTouchEnd={handleTabMouseUp}
+            >
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
+                  onClick={() => setActiveCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
