@@ -52,6 +52,15 @@ function parseItems(items) {
   try { return JSON.parse(items) } catch { return [] }
 }
 
+// 카테고리 목록 (만료되지 않은 전단지 기준)
+// GET /api/flyers/categories
+router.get('/categories', async (req, res) => {
+  const rows = await db.prepare(
+    "SELECT DISTINCT category FROM flyers WHERE REPLACE(valid_until, '.', '-') >= date('now', 'localtime') ORDER BY category"
+  ).all()
+  res.json({ ok: true, data: rows.map(r => r.category) })
+})
+
 // 전단지 목록 조회
 // GET /api/flyers?category=마트&q=검색어&page=1&limit=10
 router.get('/', async (req, res) => {

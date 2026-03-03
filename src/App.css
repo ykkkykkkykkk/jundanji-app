@@ -226,28 +226,11 @@ body {
 }
 
 /* 카테고리 탭 */
-.category-tabs-wrapper {
-  position: relative;
-}
-
-.category-tabs-wrapper::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 40px;
-  background: linear-gradient(to right, transparent, var(--bg-header));
-  pointer-events: none;
-  z-index: 1;
-}
-
 .category-tabs {
   display: flex;
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 4px;
-  padding-right: 32px;
   scrollbar-width: none;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;

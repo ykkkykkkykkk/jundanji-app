@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { getFlyers } from '../api/index'
-
-const CATEGORIES = ['전체', '마트', '편의점', '카페', '음식점', '패션', '뷰티', '가전', '온라인', '엔터', '생활용품']
+import { getFlyers, getCategories } from '../api/index'
 const PAGE_LIMIT = 8
 
 function getCategoryColor(category) {
@@ -26,6 +24,7 @@ function isExpired(validUntil) {
 }
 
 export default function MainPage({ onFlyerClick, onNotificationClick, unreadCount, darkMode, onDarkModeToggle, bookmarkedIds = new Set(), onBookmarkToggle }) {
+  const [categories, setCategories] = useState(['전체'])
   const [activeCategory, setActiveCategory] = useState('전체')
   const [flyers, setFlyers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -38,6 +37,13 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
   const [searchQuery, setSearchQuery] = useState('')
   const searchInputRef = useRef(null)
   const sentinelRef = useRef(null)
+
+  // 카테고리 목록 로드
+  useEffect(() => {
+    getCategories().then(cats => {
+      setCategories(['전체', ...cats])
+    }).catch(() => {})
+  }, [])
 
   // 카테고리/검색 변경 시 초기화
   useEffect(() => {
@@ -112,18 +118,16 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
               <button className="icon-btn" onClick={handleSearchOpen}>🔍</button>
             </div>
           </div>
-          <div className="category-tabs-wrapper">
-            <div className="category-tabs">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat}
-                  className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
-                  onClick={() => setActiveCategory(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
+          <div className="category-tabs">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
+                onClick={() => setActiveCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
         </div>
       </div>

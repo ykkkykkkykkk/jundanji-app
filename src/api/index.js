@@ -11,6 +11,11 @@ async function fetchJSON(url, options) {
   return data.data
 }
 
+// 카테고리 목록 조회
+export async function getCategories() {
+  return fetchJSON(`${BASE}/flyers/categories`)
+}
+
 // 전단지 목록 조회 (카테고리 필터 + 검색 + 페이지네이션)
 // 반환: { data: [...], pagination: { page, limit, total, hasMore } }
 export async function getFlyers(category, q, page = 1, limit = 10) {
