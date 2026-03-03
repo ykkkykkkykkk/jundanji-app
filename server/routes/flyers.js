@@ -64,7 +64,7 @@ router.get('/', async (req, res) => {
     FROM flyers f
     LEFT JOIN flyer_items fi ON fi.flyer_id = f.id
   `
-  const conditions = []
+  const conditions = ["REPLACE(f.valid_until, '.', '-') >= date('now', 'localtime')"]
   const params = []
 
   if (category && category !== '전체') {

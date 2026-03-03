@@ -71,6 +71,30 @@ app.use('/api', qrRouter)
 app.use('/api/business', businessRouter)
 app.use('/api/admin', adminRouter)
 
+// 만료 전단지 자동 삭제 (Vercel Cron)
+app.get('/api/cron/cleanup', async (req, res) => {
+  // Vercel Cron 인증 (CRON_SECRET 설정 시)
+  if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ ok: false, message: 'Unauthorized' })
+  }
+
+  const db = require('./db')
+  const expired = await db.prepare(
+    "SELECT id, store_name, valid_until FROM flyers WHERE REPLACE(valid_until, '.', '-') < date('now', 'localtime')"
+  ).all()
+
+  if (expired.length === 0) {
+    return res.json({ ok: true, deleted: 0, message: '만료된 전단지가 없습니다.' })
+  }
+
+  for (const f of expired) {
+    await db.prepare('DELETE FROM flyers WHERE id = ?').run(f.id)
+  }
+
+  console.log(`[Cron] 만료 전단지 ${expired.length}개 삭제:`, expired.map(f => f.store_name).join(', '))
+  res.json({ ok: true, deleted: expired.length, flyers: expired.map(f => ({ id: f.id, storeName: f.store_name, validUntil: f.valid_until })) })
+})
+
 // 404
 app.use('/api', (req, res) => {
   res.status(404).json({ ok: false, message: `${req.method} ${req.path} - 존재하지 않는 경로입니다.` })
