@@ -42,7 +42,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-family: 'Dongle', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-weight: 700;
+  font-size: 64px;
   background: var(--bg-body);
   min-height: 100vh;
   display: flex;
@@ -179,8 +181,9 @@ body {
 }
 
 .app-logo {
+  font-family: 'Jua', sans-serif;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 400;
   color: #FF4757;
   letter-spacing: -0.5px;
 }
@@ -1122,8 +1125,9 @@ body {
 }
 
 .login-logo {
+  font-family: 'Jua', sans-serif;
   font-size: 28px;
-  font-weight: 900;
+  font-weight: 400;
   color: #FF4757;
   text-align: center;
   margin-bottom: 6px;
@@ -1717,8 +1721,9 @@ body {
 }
 
 .splash-logo-title {
+  font-family: 'Jua', sans-serif;
   font-size: 42px;
-  font-weight: 900;
+  font-weight: 400;
   color: white;
   letter-spacing: -1px;
   text-shadow: 0 4px 20px rgba(0,0,0,0.2);
@@ -1778,6 +1783,7 @@ body {
 
 /* ==================== 복권 긁기 (ScratchCard) ==================== */
 
+/* ===== 스크래치 카드 오버레이 ===== */
 .scratch-overlay {
   position: fixed;
   inset: 0;
@@ -1787,14 +1793,15 @@ body {
   align-items: center;
   justify-content: center;
   animation: overlayFadeIn 0.3s ease;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 .scratch-overlay.scratch-revealed {
   animation: overlayFadeIn 0.3s ease;
 }
 .scratch-container {
   position: relative;
-  width: 360px;
-  max-width: 92vw;
+  width: 340px;
 }
 .scratch-close-btn {
   position: absolute;
@@ -1822,62 +1829,144 @@ body {
 }
 .scratch-card-inner {
   position: relative;
+  width: 340px;
+  height: 400px;
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
 }
-.scratch-preview {
+
+/* ===== 전단지 포스터 (고정 340x400, 캔버스와 동일) ===== */
+.scratch-flyer {
+  position: relative;
   width: 340px;
   height: 400px;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 24px;
-  box-sizing: border-box;
+  overflow: hidden;
 }
-.scratch-preview-img {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 12px;
-}
-.scratch-preview-emoji {
-  font-size: 64px;
-}
-.scratch-preview-store {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.scratch-preview-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--text-primary);
-  text-align: center;
-}
-.scratch-preview-sub {
-  font-size: 14px;
-  color: var(--text-secondary);
-  text-align: center;
-}
-.scratch-preview-point {
-  display: inline-block;
-  background: linear-gradient(135deg, #FFB800, #FF8C00);
-  color: #fff;
-  font-weight: 700;
-  font-size: 16px;
-  padding: 6px 16px;
-  border-radius: 20px;
-  margin-top: 8px;
-}
-.scratch-canvas {
+
+/* 이미지 — 340x400 전체를 꽉 채움 */
+.scratch-flyer-img {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
+}
+
+/* 이모지 — 340x400 중앙에 크게 */
+.scratch-flyer-emoji-bg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  font-size: 140px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* 상단 바 — 가게명 + 포인트 */
+.scratch-flyer-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  pointer-events: none;
+}
+.scratch-flyer-store {
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  padding: 5px 12px;
+  border-radius: 8px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.scratch-flyer-point {
+  background: linear-gradient(135deg, #FFB800, #FF8C00);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  padding: 5px 12px;
+  border-radius: 8px;
+}
+
+/* 하단 오버레이 — 제목 + 상품 목록 */
+.scratch-flyer-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 60%, transparent);
+  padding: 40px 14px 14px;
+  pointer-events: none;
+}
+.scratch-flyer-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.3;
+  margin-bottom: 2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.scratch-flyer-sub {
+  font-size: 14px;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 8px;
+}
+.scratch-flyer-items {
+  border-top: 1px solid rgba(255,255,255,0.2);
+  padding-top: 6px;
+}
+.scratch-flyer-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+}
+.scratch-flyer-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+.scratch-flyer-item-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.scratch-flyer-item-sale {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+.scratch-flyer-item-rate {
+  font-size: 13px;
+  font-weight: 800;
+  color: #FF4757;
+}
+.scratch-flyer-item-more {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  padding-top: 2px;
+}
+
+/* ===== 은박 캔버스 (고정 340x400, 전단지와 동일) ===== */
+.scratch-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 340px;
+  height: 400px;
   cursor: pointer;
   touch-action: none;
   border-radius: 16px;
@@ -2589,4 +2678,145 @@ body {
 .charge-history-date {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* ==================== 이미지 크롭 에디터 ==================== */
+
+.cropper-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlayFadeIn 0.2s ease;
+}
+
+.cropper-modal {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 20px;
+  width: 346px;
+  max-width: 94vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cropper-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.cropper-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cropper-cancel-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.cropper-viewport {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 2px solid var(--border-main);
+  background: #000;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cropper-viewport:active {
+  cursor: grabbing;
+}
+
+.cropper-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.cropper-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 14px;
+}
+
+.cropper-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 0 4px;
+}
+
+.cropper-zoom-label {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1;
+  user-select: none;
+}
+
+.cropper-zoom-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-main);
+  outline: none;
+}
+.cropper-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FF4757;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.cropper-zoom-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #FF4757;
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.cropper-confirm-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #FF4757, #FF6B81);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
 }

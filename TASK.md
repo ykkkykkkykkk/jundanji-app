@@ -134,7 +134,8 @@
 │   │   ├── ScratchCard.jsx
 │   │   ├── QuizModal.jsx
 │   │   ├── QrScanner.jsx
-│   │   └── QrDisplay.jsx
+│   │   ├── QrDisplay.jsx
+│   │   └── ImageCropper.jsx    # [NEW] 이미지 크롭 편집기
 │   ├── pages/
 │   │   ├── LoginPage.jsx
 │   │   ├── MainPage.jsx
@@ -227,6 +228,34 @@
 
 ### 카테고리 시드 데이터
 마트, 편의점, 카페, 음식점, 패션, 뷰티, 가전, 온라인, 엔터, 생활용품, **운동**
+
+---
+
+## v3.3 이미지 크롭 에디터 (2026-03-03) ✅
+
+### 신규 기능
+
+#### 이미지 크롭 편집기 ✅
+- [x] `src/components/ImageCropper.jsx` — 크롭 에디터 컴포넌트 (신규)
+  - 모달 오버레이 (z-index 600)
+  - 340:400 (17:20) 고정 비율 크롭 프레임 (뷰포트 306x360)
+  - 마우스/터치 드래그로 이미지 위치 조절
+  - 슬라이더 + 핀치줌 확대/축소
+  - cover 방식 최소 스케일 → 빈 영역 발생 불가
+  - 경계 clamp로 크롭 프레임 밖 노출 방지
+  - Canvas로 340x400 JPEG Blob 생성 (품질 0.92)
+- [x] `src/pages/AdminPage.jsx` — 크롭 모달 연동
+  - showCropper/rawImageSrc 상태 추가
+  - 파일 선택 → 크롭 모달 → Blob→File 변환 → 기존 FormData 전송
+  - 업로드 힌트에 "권장 사이즈: 340 x 400px" 추가
+- [x] `src/App.css` — 크롭 에디터 스타일 추가 (브랜드 컬러 #FF4757)
+
+### 파일 변경
+| 파일 | 작업 |
+|------|------|
+| `src/components/ImageCropper.jsx` | 신규 생성 |
+| `src/pages/AdminPage.jsx` | 크롭 모달 연동 |
+| `src/App.css` | 크롭 에디터 스타일 |
 
 ---
 

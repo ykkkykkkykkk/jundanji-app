@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getFlyers, createFlyer, updateFlyer, deleteFlyer, registerQuizzes, getQuizzesByFlyer, generateQrCode, getQrCode, getBusinessStats, getBusinessFlyers, chargePointBudget, getChargeHistory } from '../api/index'
 import QrDisplay from '../components/QrDisplay'
+import ImageCropper from '../components/ImageCropper'
 
 const CATEGORIES = ['마트', '편의점', '뷰티', '카페', '생활용품', '음식점', '패션', '가전', '온라인', '엔터']
 
@@ -47,6 +48,10 @@ export default function AdminPage({ onBack, token, userId }) {
   const [chargeMsg, setChargeMsg] = useState('')
   const [charging, setCharging] = useState(false)
 
+  // 크롭 관련
+  const [showCropper, setShowCropper] = useState(false)
+  const [rawImageSrc, setRawImageSrc] = useState(null)
+
   const loadFlyers = () => {
     setLoading(true)
     getFlyers().then(data => { setFlyers(data.data ?? data); setLoading(false) })
@@ -74,10 +79,24 @@ export default function AdminPage({ onBack, token, userId }) {
   const handleImageChange = (e) => {
     const file = e.target.files[0]
     if (!file) return
-    setImageFile(file)
     const reader = new FileReader()
-    reader.onload = (ev) => setImagePreview(ev.target.result)
+    reader.onload = (ev) => {
+      setRawImageSrc(ev.target.result)
+      setShowCropper(true)
+    }
     reader.readAsDataURL(file)
+  }
+  const handleCropComplete = (blob) => {
+    const file = new File([blob], 'cropped.jpg', { type: 'image/jpeg' })
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(blob))
+    setShowCropper(false)
+    setRawImageSrc(null)
+  }
+  const handleCropCancel = () => {
+    setShowCropper(false)
+    setRawImageSrc(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
   const removeImage = () => { setImageFile(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = '' }
 
@@ -356,7 +375,7 @@ export default function AdminPage({ onBack, token, userId }) {
             <div className="admin-image-upload-area" onClick={() => fileInputRef.current?.click()}>
               <span className="admin-image-upload-icon">🖼️</span>
               <span className="admin-image-upload-label">클릭하여 이미지 선택</span>
-              <span className="admin-image-upload-hint">JPG, PNG, WEBP 지원</span>
+              <span className="admin-image-upload-hint">JPG, PNG, WEBP 지원 · 권장 사이즈: 340 x 400px</span>
             </div>
           )}
           <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
@@ -538,6 +557,11 @@ export default function AdminPage({ onBack, token, userId }) {
             <div className="list-status">충전 내역이 없습니다.</div>
           )}
         </div>
+      )}
+
+      {/* ===== 이미지 크롭 모달 ===== */}
+      {showCropper && rawImageSrc && (
+        <ImageCropper imageSrc={rawImageSrc} onConfirm={handleCropComplete} onCancel={handleCropCancel} />
       )}
 
       {/* ===== 통계 탭 ===== */}

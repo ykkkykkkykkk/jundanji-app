@@ -155,6 +155,16 @@ export default function App() {
     updateUserRole(auth.token, selectedRole).catch(() => {})
   }
 
+  // 모달 열릴 때 배경 스크롤 잠금
+  useEffect(() => {
+    if (showScratchCard) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [showScratchCard])
+
   const handleFlyerClick = (flyer) => {
     scrollPosRef.current = window.scrollY
     setScratchFlyer(flyer)
@@ -163,6 +173,7 @@ export default function App() {
 
   const handleScratchComplete = (flyer) => {
     setShowScratchCard(false)
+    setScratchFlyer(null)
     setSelectedFlyer(flyer)
     setPage('detail')
   }
