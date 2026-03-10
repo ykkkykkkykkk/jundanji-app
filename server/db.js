@@ -141,16 +141,15 @@ const schemaSQL = `
     created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
   );
 
-  CREATE TABLE IF NOT EXISTS withdrawals (
+  CREATE TABLE IF NOT EXISTS gift_orders (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    gift_id         TEXT NOT NULL,
+    gift_name       TEXT NOT NULL,
     amount          INTEGER NOT NULL,
     status          TEXT NOT NULL DEFAULT 'pending',
-    bank_name       TEXT,
-    account_number  TEXT,
-    account_holder  TEXT,
     created_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-    processed_at    TEXT
+    sent_at         TEXT
   );
 
   CREATE TABLE IF NOT EXISTS categories (

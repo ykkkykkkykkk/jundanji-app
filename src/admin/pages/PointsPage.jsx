@@ -1,38 +1,36 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getWithdrawals, updateWithdrawalStatus } from '../api'
+import { getGiftOrders, updateGiftOrderStatus } from '../api'
 import DataTable, { Badge, ActionButton, Pagination } from '../components/DataTable'
 
 const columns = [
   { key: 'id', label: 'ID', width: '60px' },
-  { key: 'user', label: '유저' },
-  { key: 'amount', label: '금액', width: '110px' },
-  { key: 'bank', label: '은행', width: '100px' },
-  { key: 'account', label: '계좌번호' },
-  { key: 'holder', label: '예금주', width: '100px' },
+  { key: 'user', label: '유저 (카카오계정)' },
+  { key: 'gift', label: '기프티콘' },
+  { key: 'amount', label: '포인트', width: '100px' },
   { key: 'created_at', label: '신청일', width: '160px' },
-  { key: 'status', label: '상태', width: '80px' },
+  { key: 'status', label: '상태', width: '90px' },
   { key: 'actions', label: '액션', width: '160px' },
 ]
 
 const statusMap = {
   pending: { label: '대기', variant: 'yellow' },
-  approved: { label: '승인', variant: 'green' },
-  rejected: { label: '거절', variant: 'red' },
+  sent: { label: '발송완료', variant: 'green' },
+  failed: { label: '실패', variant: 'red' },
 }
 
 export default function PointsPage() {
-  const [withdrawals, setWithdrawals] = useState([])
+  const [orders, setOrders] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [filterStatus, setFilterStatus] = useState('')
   const [loading, setLoading] = useState(true)
 
-  const fetchWithdrawals = useCallback(async () => {
+  const fetchOrders = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await getWithdrawals({ page, status: filterStatus })
-      setWithdrawals(data.withdrawals)
-      setTotal(data.total)
+      const data = await getGiftOrders({ page, status: filterStatus })
+      setOrders(data.orders || [])
+      setTotal(data.total || 0)
     } catch (err) {
       console.error(err)
     } finally {
@@ -40,13 +38,14 @@ export default function PointsPage() {
     }
   }, [page, filterStatus])
 
-  useEffect(() => { fetchWithdrawals() }, [fetchWithdrawals])
+  useEffect(() => { fetchOrders() }, [fetchOrders])
 
   const handleStatusChange = async (id, newStatus) => {
-    if (!confirm(`정말 이 출금 신청을 ${newStatus === 'approved' ? '승인' : '거절'}하시겠습니까?`)) return
+    const label = newStatus === 'sent' ? '발송 완료' : '실패'
+    if (!confirm(`정말 이 기프티콘을 '${label}' 처리하시겠습니까?`)) return
     try {
-      await updateWithdrawalStatus(id, newStatus)
-      fetchWithdrawals()
+      await updateGiftOrderStatus(id, newStatus)
+      fetchOrders()
     } catch (err) {
       alert(err.message)
     }
@@ -54,7 +53,7 @@ export default function PointsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">포인트 정산</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">기프티콘 관리</h1>
 
       {/* 필터 */}
       <div className="flex flex-wrap gap-3 mb-4">
@@ -65,8 +64,8 @@ export default function PointsPage() {
         >
           <option value="">전체 상태</option>
           <option value="pending">대기</option>
-          <option value="approved">승인</option>
-          <option value="rejected">거절</option>
+          <option value="sent">발송완료</option>
+          <option value="failed">실패</option>
         </select>
       </div>
 
@@ -76,38 +75,37 @@ export default function PointsPage() {
         <>
           <DataTable
             columns={columns}
-            data={withdrawals}
-            emptyText="출금 신청이 없습니다."
-            renderRow={(w) => (
-              <tr key={w.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3 text-gray-500">{w.id}</td>
+            data={orders}
+            emptyText="기프티콘 주문이 없습니다."
+            renderRow={(o) => (
+              <tr key={o.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3 text-gray-500">{o.id}</td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-800">{w.nickname}</div>
-                  <div className="text-gray-400 text-xs">{w.email || '-'}</div>
+                  <div className="font-medium text-gray-800">{o.nickname}</div>
+                  <div className="text-gray-400 text-xs">{o.email || '-'}</div>
+                  {o.provider && <div className="text-xs mt-0.5" style={{ color: o.provider === 'kakao' ? '#3A1D1D' : '#4285F4' }}>{o.provider === 'kakao' ? '🟡 카카오' : '🔵 구글'}</div>}
                 </td>
-                <td className="px-4 py-3 font-bold text-brand">{w.amount.toLocaleString()}P</td>
-                <td className="px-4 py-3 text-gray-600">{w.bank_name || '-'}</td>
-                <td className="px-4 py-3 text-gray-600">{w.account_number || '-'}</td>
-                <td className="px-4 py-3 text-gray-600">{w.account_holder || '-'}</td>
-                <td className="px-4 py-3 text-gray-400 text-xs">{w.created_at}</td>
+                <td className="px-4 py-3 text-gray-700">{o.gift_name}</td>
+                <td className="px-4 py-3 font-bold text-brand">{o.amount.toLocaleString()}P</td>
+                <td className="px-4 py-3 text-gray-400 text-xs">{o.created_at}</td>
                 <td className="px-4 py-3">
-                  <Badge variant={statusMap[w.status]?.variant}>
-                    {statusMap[w.status]?.label || w.status}
+                  <Badge variant={statusMap[o.status]?.variant}>
+                    {statusMap[o.status]?.label || o.status}
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
-                  {w.status === 'pending' && (
+                  {o.status === 'pending' && (
                     <div className="flex gap-1.5">
-                      <ActionButton variant="success" onClick={() => handleStatusChange(w.id, 'approved')}>
-                        승인
+                      <ActionButton variant="success" onClick={() => handleStatusChange(o.id, 'sent')}>
+                        발송완료
                       </ActionButton>
-                      <ActionButton variant="danger" onClick={() => handleStatusChange(w.id, 'rejected')}>
-                        거절
+                      <ActionButton variant="danger" onClick={() => handleStatusChange(o.id, 'failed')}>
+                        실패
                       </ActionButton>
                     </div>
                   )}
-                  {w.status !== 'pending' && (
-                    <span className="text-xs text-gray-400">{w.processed_at}</span>
+                  {o.status !== 'pending' && (
+                    <span className="text-xs text-gray-400">{o.sent_at}</span>
                   )}
                 </td>
               </tr>

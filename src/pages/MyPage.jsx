@@ -1,22 +1,9 @@
 import { useState, useEffect } from 'react'
-import { updateNickname, usePoints, requestWithdrawal, getWithdrawalHistory, createInquiry, getInquiryHistory } from '../api/index'
+import { updateNickname, createInquiry, getInquiryHistory } from '../api/index'
 
 function isExpired(validUntil) {
   const [y, m, d] = validUntil.split('.').map(Number)
   return new Date(y, m - 1, d + 1) <= new Date()
-}
-
-const BANKS = [
-  '국민은행', '신한은행', '우리은행', '하나은행', 'SC제일은행',
-  '기업은행', '농협은행', '카카오뱅크', '토스뱅크', '케이뱅크',
-  '우체국', '새마을금고', '수협은행', '대구은행', '부산은행',
-  '광주은행', '전북은행', '경남은행', '제주은행',
-]
-
-const STATUS_LABELS = {
-  pending: '대기 중',
-  approved: '승인됨',
-  rejected: '거절됨',
 }
 
 const INQUIRY_STATUS = {
@@ -24,34 +11,16 @@ const INQUIRY_STATUS = {
   answered: '답변 완료',
 }
 
-const INQUIRY_CATEGORIES = ['일반', '포인트', '출금', '전단지', '계정', '기타']
+const INQUIRY_CATEGORIES = ['일반', '포인트', '기프티콘', '전단지', '계정', '기타']
 
-const GIFT_OPTIONS = [
-  { label: '아메리카노 교환권', points: 100, emoji: '☕' },
-  { label: '편의점 1,000원 쿠폰', points: 200, emoji: '🏪' },
-  { label: '치킨 할인 쿠폰', points: 500, emoji: '🍗' },
-]
 
 export default function MyPage({ points, nickname, shareHistory, quizHistory = [], visitHistory = [], isLoggedIn, onLoginClick, onLogout, onNicknameChange, token, userId, onPointsChange, bookmarkedFlyers = [], onBookmarkToggle, onFlyerClick }) {
   const totalShare = shareHistory.length
   const [editingNick, setEditingNick] = useState(false)
   const [nickInput, setNickInput] = useState(nickname)
   const [nickLoading, setNickLoading] = useState(false)
-  const [showGift, setShowGift] = useState(false)
-  const [giftMsg, setGiftMsg] = useState('')
   const [showBookmarks, setShowBookmarks] = useState(true)
   const [historyTab, setHistoryTab] = useState('share')  // 'share' | 'quiz' | 'visit'
-
-  // 출금 관련 상태
-  const [showWithdraw, setShowWithdraw] = useState(false)
-  const [withdrawAmount, setWithdrawAmount] = useState('')
-  const [withdrawBank, setWithdrawBank] = useState('')
-  const [withdrawAccount, setWithdrawAccount] = useState('')
-  const [withdrawHolder, setWithdrawHolder] = useState('')
-  const [withdrawMsg, setWithdrawMsg] = useState('')
-  const [withdrawLoading, setWithdrawLoading] = useState(false)
-  const [withdrawHistory, setWithdrawHistory] = useState([])
-  const [showWithdrawHistory, setShowWithdrawHistory] = useState(false)
 
   // 1:1 문의 관련 상태
   const [showInquiry, setShowInquiry] = useState(false)
@@ -63,17 +32,6 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
   const [inquiryHistory, setInquiryHistory] = useState([])
   const [showInquiryHistory, setShowInquiryHistory] = useState(false)
   const [expandedInquiry, setExpandedInquiry] = useState(null)
-
-  const handleGiftExchange = async (gift) => {
-    if (points < gift.points) { setGiftMsg('포인트가 부족합니다.'); return }
-    try {
-      const res = await usePoints(userId, gift.points, `${gift.label} 교환`)
-      onPointsChange(res.remainPoints)
-      setGiftMsg(`${gift.emoji} ${gift.label} 교환 완료! (잔여 ${res.remainPoints}P)`)
-    } catch (e) {
-      setGiftMsg(e.message)
-    }
-  }
 
   const handleNickSave = async () => {
     if (!nickInput.trim() || nickInput === nickname) { setEditingNick(false); return }
@@ -114,39 +72,6 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
       setInquiryMsg(e.message)
     } finally {
       setInquiryLoading(false)
-    }
-  }
-
-  // 출금 내역 로드
-  useEffect(() => {
-    if (showWithdrawHistory && isLoggedIn) {
-      getWithdrawalHistory(userId).then(setWithdrawHistory).catch(() => {})
-    }
-  }, [showWithdrawHistory, userId, isLoggedIn])
-
-  const handleWithdrawSubmit = async () => {
-    const amount = Number(withdrawAmount)
-    if (!amount || amount < 5000) { setWithdrawMsg('최소 출금액은 5,000P입니다.'); return }
-    if (amount > points) { setWithdrawMsg('보유 포인트보다 많은 금액은 출금할 수 없습니다.'); return }
-    if (!withdrawBank) { setWithdrawMsg('은행을 선택해주세요.'); return }
-    if (!withdrawAccount.trim()) { setWithdrawMsg('계좌번호를 입력해주세요.'); return }
-    if (!withdrawHolder.trim()) { setWithdrawMsg('예금주명을 입력해주세요.'); return }
-
-    setWithdrawLoading(true)
-    setWithdrawMsg('')
-    try {
-      const res = await requestWithdrawal(userId, amount, withdrawBank, withdrawAccount, withdrawHolder)
-      setWithdrawMsg(res.message || '출금 신청이 완료되었습니다!')
-      setWithdrawAmount('')
-      setWithdrawAccount('')
-      setWithdrawHolder('')
-      setWithdrawBank('')
-      // 출금 내역 갱신
-      getWithdrawalHistory(userId).then(setWithdrawHistory).catch(() => {})
-    } catch (e) {
-      setWithdrawMsg(e.message)
-    } finally {
-      setWithdrawLoading(false)
     }
   }
 
@@ -226,152 +151,6 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
         </div>
       </div>
 
-      {/* 포인트 교환 */}
-      <div className="gift-section">
-        <div className="gift-header" onClick={() => { setShowGift(v => !v); setGiftMsg('') }}>
-          <span className="gift-title">🎁 포인트 교환</span>
-          <span className="gift-arrow">{showGift ? '▲' : '▼'}</span>
-        </div>
-        {showGift && (
-          <div className="gift-list">
-            {GIFT_OPTIONS.map(g => (
-              <div key={g.label} className="gift-item">
-                <span className="gift-emoji">{g.emoji}</span>
-                <div className="gift-info">
-                  <div className="gift-name">{g.label}</div>
-                  <div className="gift-cost">{g.points.toLocaleString()}P</div>
-                </div>
-                <button
-                  className="gift-btn"
-                  disabled={points < g.points}
-                  onClick={() => handleGiftExchange(g)}
-                >
-                  교환
-                </button>
-              </div>
-            ))}
-            {giftMsg && <p className="gift-msg">{giftMsg}</p>}
-          </div>
-        )}
-      </div>
-
-      {/* 포인트 출금 */}
-      {isLoggedIn && (
-        <div className="gift-section">
-          <div className="gift-header" onClick={() => { setShowWithdraw(v => !v); setWithdrawMsg('') }}>
-            <span className="gift-title">💰 포인트 출금</span>
-            <span className="gift-arrow">{showWithdraw ? '▲' : '▼'}</span>
-          </div>
-          {showWithdraw && (
-            <div className="withdraw-section">
-              <div className="withdraw-form">
-                <div className="withdraw-field">
-                  <label className="withdraw-label">출금 금액</label>
-                  <div className="withdraw-amount-row">
-                    <input
-                      className="withdraw-input"
-                      type="number"
-                      placeholder="최소 5,000P"
-                      value={withdrawAmount}
-                      onChange={e => setWithdrawAmount(e.target.value)}
-                      min={5000}
-                      max={points}
-                    />
-                    <button
-                      className="withdraw-all-btn"
-                      onClick={() => setWithdrawAmount(String(points))}
-                    >
-                      전액
-                    </button>
-                  </div>
-                  <div className="withdraw-hint">보유: {points.toLocaleString()}P / 최소 5,000P / 가입 후 7일 경과 필요</div>
-                </div>
-
-                <div className="withdraw-field">
-                  <label className="withdraw-label">은행</label>
-                  <select
-                    className="withdraw-input withdraw-select"
-                    value={withdrawBank}
-                    onChange={e => setWithdrawBank(e.target.value)}
-                  >
-                    <option value="">은행 선택</option>
-                    {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                  </select>
-                </div>
-
-                <div className="withdraw-field">
-                  <label className="withdraw-label">계좌번호</label>
-                  <input
-                    className="withdraw-input"
-                    type="text"
-                    placeholder="'-' 포함 입력"
-                    value={withdrawAccount}
-                    onChange={e => setWithdrawAccount(e.target.value)}
-                  />
-                </div>
-
-                <div className="withdraw-field">
-                  <label className="withdraw-label">예금주</label>
-                  <input
-                    className="withdraw-input"
-                    type="text"
-                    placeholder="예금주명 입력"
-                    value={withdrawHolder}
-                    onChange={e => setWithdrawHolder(e.target.value)}
-                  />
-                </div>
-
-                {withdrawMsg && (
-                  <p className={`withdraw-msg ${withdrawMsg.includes('완료') ? 'withdraw-msg-ok' : ''}`}>
-                    {withdrawMsg}
-                  </p>
-                )}
-
-                <button
-                  className="withdraw-submit-btn"
-                  onClick={handleWithdrawSubmit}
-                  disabled={withdrawLoading}
-                >
-                  {withdrawLoading ? '신청 중...' : '출금 신청'}
-                </button>
-              </div>
-
-              {/* 출금 내역 토글 */}
-              <div
-                className="withdraw-history-toggle"
-                onClick={() => setShowWithdrawHistory(v => !v)}
-              >
-                {showWithdrawHistory ? '▲ 출금 내역 닫기' : '▼ 출금 내역 보기'}
-              </div>
-
-              {showWithdrawHistory && (
-                <div className="withdraw-history-list">
-                  {withdrawHistory.length === 0 ? (
-                    <div className="empty-history">
-                      <span className="empty-icon">💰</span>
-                      <p className="empty-text">출금 내역이 없습니다.</p>
-                    </div>
-                  ) : (
-                    withdrawHistory.map(w => (
-                      <div key={w.id} className="withdraw-history-item">
-                        <div className="withdraw-history-info">
-                          <div className="withdraw-history-amount">{w.amount.toLocaleString()}P</div>
-                          <div className="withdraw-history-bank">{w.bank_name} {w.account_number}</div>
-                          <div className="withdraw-history-date">{w.created_at}</div>
-                        </div>
-                        <div className={`withdraw-status withdraw-status-${w.status}`}>
-                          {STATUS_LABELS[w.status] || w.status}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* 즐겨찾기 섹션 */}
       <div className="gift-section">
         <div className="gift-header" onClick={() => setShowBookmarks(v => !v)}>
@@ -428,12 +207,12 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
             <span className="gift-arrow">{showInquiry ? '▲' : '▼'}</span>
           </div>
           {showInquiry && (
-            <div className="withdraw-section">
-              <div className="withdraw-form">
-                <div className="withdraw-field">
-                  <label className="withdraw-label">문의 유형</label>
+            <div className="inquiry-section">
+              <div className="inquiry-form">
+                <div className="inquiry-field">
+                  <label className="inquiry-label">문의 유형</label>
                   <select
-                    className="withdraw-input withdraw-select"
+                    className="inquiry-input inquiry-select"
                     value={inquiryCategory}
                     onChange={e => setInquiryCategory(e.target.value)}
                   >
@@ -441,10 +220,10 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
                   </select>
                 </div>
 
-                <div className="withdraw-field">
-                  <label className="withdraw-label">제목</label>
+                <div className="inquiry-field">
+                  <label className="inquiry-label">제목</label>
                   <input
-                    className="withdraw-input"
+                    className="inquiry-input"
                     type="text"
                     placeholder="문의 제목을 입력하세요"
                     value={inquiryTitle}
@@ -452,10 +231,10 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
                   />
                 </div>
 
-                <div className="withdraw-field">
-                  <label className="withdraw-label">내용</label>
+                <div className="inquiry-field">
+                  <label className="inquiry-label">내용</label>
                   <textarea
-                    className="withdraw-input inquiry-textarea"
+                    className="inquiry-input inquiry-textarea"
                     placeholder="문의 내용을 자세히 작성해주세요 (최소 5자)"
                     value={inquiryContent}
                     onChange={e => setInquiryContent(e.target.value)}
@@ -464,13 +243,13 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
                 </div>
 
                 {inquiryMsg && (
-                  <p className={`withdraw-msg ${inquiryMsg.includes('접수') ? 'withdraw-msg-ok' : ''}`}>
+                  <p className={`inquiry-msg ${inquiryMsg.includes('접수') ? 'inquiry-msg-ok' : ''}`}>
                     {inquiryMsg}
                   </p>
                 )}
 
                 <button
-                  className="withdraw-submit-btn"
+                  className="inquiry-submit-btn"
                   onClick={handleInquirySubmit}
                   disabled={inquiryLoading}
                 >
@@ -479,14 +258,14 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
               </div>
 
               <div
-                className="withdraw-history-toggle"
+                className="inquiry-history-toggle"
                 onClick={() => setShowInquiryHistory(v => !v)}
               >
                 {showInquiryHistory ? '▲ 문의 내역 닫기' : '▼ 문의 내역 보기'}
               </div>
 
               {showInquiryHistory && (
-                <div className="withdraw-history-list">
+                <div className="inquiry-history-list">
                   {inquiryHistory.length === 0 ? (
                     <div className="empty-history">
                       <span className="empty-icon">💬</span>
@@ -504,7 +283,7 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
                             <span className="inquiry-category-badge">{inq.category}</span>
                             <span className="inquiry-item-title">{inq.title}</span>
                           </div>
-                          <div className={`withdraw-status withdraw-status-${inq.status === 'answered' ? 'approved' : 'pending'}`}>
+                          <div className={`inquiry-status inquiry-status-${inq.status === 'answered' ? 'answered' : 'pending'}`}>
                             {INQUIRY_STATUS[inq.status] || inq.status}
                           </div>
                         </div>

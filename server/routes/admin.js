@@ -154,9 +154,9 @@ router.patch('/users/:id/status', requireAdmin, async (req, res) => {
   res.json({ ok: true, message: `유저 상태가 '${status}'로 변경되었습니다.` })
 })
 
-// ======================== 포인트 정산 ========================
+// ======================== 기프티콘 관리 ========================
 
-router.get('/withdrawals', requireAdmin, async (req, res) => {
+router.get('/gift-orders', requireAdmin, async (req, res) => {
   const { page = 1, limit = 20, status = '' } = req.query
   const offset = (page - 1) * limit
 
@@ -164,65 +164,57 @@ router.get('/withdrawals', requireAdmin, async (req, res) => {
   const params = []
 
   if (status) {
-    where += ' AND w.status = ?'
+    where += ' AND g.status = ?'
     params.push(status)
   }
 
-  const totalRow = await db.prepare(`SELECT COUNT(*) as count FROM withdrawals w ${where}`).get(...params)
+  const totalRow = await db.prepare(`SELECT COUNT(*) as count FROM gift_orders g ${where}`).get(...params)
   const total = totalRow.count
 
-  const withdrawals = await db.prepare(`
-    SELECT w.*, u.nickname, u.email
-    FROM withdrawals w
-    JOIN users u ON w.user_id = u.id
+  const orders = await db.prepare(`
+    SELECT g.*, u.nickname, u.email, u.provider
+    FROM gift_orders g
+    JOIN users u ON g.user_id = u.id
     ${where}
-    ORDER BY w.created_at DESC
+    ORDER BY g.created_at DESC
     LIMIT ? OFFSET ?
   `).all(...params, Number(limit), Number(offset))
 
-  res.json({ ok: true, withdrawals, total, page: Number(page), limit: Number(limit) })
+  res.json({ ok: true, orders, total, page: Number(page), limit: Number(limit) })
 })
 
-router.patch('/withdrawals/:id/status', requireAdmin, async (req, res) => {
+router.patch('/gift-orders/:id/status', requireAdmin, async (req, res) => {
   const { id } = req.params
   const { status } = req.body
 
-  if (!['approved', 'rejected'].includes(status)) {
+  if (!['sent', 'failed'].includes(status)) {
     return res.status(400).json({ ok: false, message: '유효하지 않은 상태입니다.' })
   }
 
-  const withdrawal = await db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(id)
-  if (!withdrawal) {
-    return res.status(404).json({ ok: false, message: '출금 신청을 찾을 수 없습니다.' })
+  const order = await db.prepare('SELECT * FROM gift_orders WHERE id = ?').get(id)
+  if (!order) {
+    return res.status(404).json({ ok: false, message: '기프티콘 주문을 찾을 수 없습니다.' })
   }
 
   const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).replace('T', ' ')
 
-  if (status === 'approved') {
-    const user = await db.prepare('SELECT points FROM users WHERE id = ?').get(withdrawal.user_id)
-    if (user.points < withdrawal.amount) {
-      return res.status(400).json({ ok: false, message: '유저 포인트가 부족합니다.' })
-    }
-
-    const tx = db.transaction(async (txDb) => {
-      await txDb.prepare('UPDATE withdrawals SET status = ?, processed_at = ? WHERE id = ?').run(status, now, id)
-      await txDb.prepare('UPDATE users SET points = points - ? WHERE id = ?').run(withdrawal.amount, withdrawal.user_id)
-      await txDb.prepare(`
-        INSERT INTO point_transactions (user_id, amount, type, description)
-        VALUES (?, ?, 'use', '포인트 출금')
-      `).run(withdrawal.user_id, withdrawal.amount)
-    })
+  if (status === 'failed') {
+    // 실패 시 포인트 환불
     try {
-      await tx()
+      await db.batch([
+        { sql: 'UPDATE gift_orders SET status = ?, sent_at = ? WHERE id = ?', args: [status, now, id] },
+        { sql: 'UPDATE users SET points = points + ? WHERE id = ?', args: [order.amount, order.user_id] },
+        { sql: "INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, 'earn', '기프티콘 발송 실패 환불')", args: [order.user_id, order.amount] },
+      ])
     } catch (err) {
-      console.error('[출금 처리 오류]', err.message)
-      return res.status(500).json({ ok: false, message: '출금 처리 중 오류가 발생했습니다.' })
+      console.error('[기프티콘 환불 오류]', err.message)
+      return res.status(500).json({ ok: false, message: '처리 중 오류가 발생했습니다.' })
     }
   } else {
-    await db.prepare('UPDATE withdrawals SET status = ?, processed_at = ? WHERE id = ?').run(status, now, id)
+    await db.prepare('UPDATE gift_orders SET status = ?, sent_at = ? WHERE id = ?').run(status, now, id)
   }
 
-  res.json({ ok: true, message: `출금 신청이 '${status}'로 처리되었습니다.` })
+  res.json({ ok: true, message: `기프티콘 주문이 '${status === 'sent' ? '발송완료' : '실패'}'로 처리되었습니다.` })
 })
 
 // ======================== 1:1 문의 관리 ========================

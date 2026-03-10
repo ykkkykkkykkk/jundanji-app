@@ -322,25 +322,23 @@ export async function getChargeHistory(token) {
   })
 }
 
-// ======== 출금 API ========
+// ======== 기프티콘 API ========
 
-// 은행 목록 조회
-export async function getBanks() {
-  return fetchJSON(`${BASE}/banks`)
-}
-
-// 출금 신청
-export async function requestWithdrawal(userId, amount, bankName, accountNumber, accountHolder) {
-  return fetchJSON(`${BASE}/withdrawals`, {
+// 기프티콘 교환 신청 (포인트 차감 + 주문 생성)
+export async function createGiftOrder(userId, giftId) {
+  const res = await fetch(`${BASE}/gift-orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, amount, bankName, accountNumber, accountHolder }),
+    body: JSON.stringify({ userId, giftId }),
   })
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.message || '서버 오류')
+  return data
 }
 
-// 출금 내역 조회
-export async function getWithdrawalHistory(userId) {
-  return fetchJSON(`${BASE}/users/${userId}/withdrawals`)
+// 기프티콘 주문 내역 조회
+export async function getGiftOrders(userId) {
+  return fetchJSON(`${BASE}/users/${userId}/gift-orders`)
 }
 
 // ======== 보안 API ========

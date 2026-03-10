@@ -3,7 +3,7 @@ const db = require('../db')
 
 const router = Router()
 
-const INQUIRY_CATEGORIES = ['일반', '포인트', '출금', '전단지', '계정', '기타']
+const INQUIRY_CATEGORIES = ['일반', '포인트', '기프티콘', '전단지', '계정', '기타']
 
 // 문의 등록
 // POST /api/inquiries

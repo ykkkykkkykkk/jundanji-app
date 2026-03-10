@@ -55,13 +55,13 @@ export const getUsers = (params = {}) => {
 export const updateUserStatus = (id, status) =>
   request(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
 
-// 출금
-export const getWithdrawals = (params = {}) => {
+// 기프티콘 주문
+export const getGiftOrders = (params = {}) => {
   const q = new URLSearchParams(params).toString()
-  return request(`/withdrawals?${q}`)
+  return request(`/gift-orders?${q}`)
 }
-export const updateWithdrawalStatus = (id, status) =>
-  request(`/withdrawals/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+export const updateGiftOrderStatus = (id, status) =>
+  request(`/gift-orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
 
 // 자영업자
 export const getBusinesses = (params = {}) => {

@@ -47,6 +47,26 @@ class LocalDatabase {
     this._db.pragma(pragmaStr)
   }
 
+  // batch: 여러 SQL을 하나의 트랜잭션으로 실행
+  batch(statements) {
+    this._db.exec('BEGIN')
+    try {
+      const results = statements.map(s => {
+        const stmt = this._db.prepare(s.sql)
+        const result = stmt.run(...(s.args || []))
+        return {
+          lastInsertRowid: Number(result.lastInsertRowid),
+          changes: result.changes,
+        }
+      })
+      this._db.exec('COMMIT')
+      return results
+    } catch (e) {
+      this._db.exec('ROLLBACK')
+      throw e
+    }
+  }
+
   transaction(fn) {
     const self = this
     return async function (...args) {

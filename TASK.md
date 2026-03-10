@@ -1,6 +1,6 @@
 # 전단지 앱 - 프로젝트 진행 현황
 
-> 마지막 업데이트: 2026-03-10 (v4.0 보안 기능 5종)
+> 마지막 업데이트: 2026-03-10 (v4.2 기프티콘 교환소 페이지)
 
 ---
 
@@ -407,6 +407,98 @@
 | `src/pages/MyPage.jsx` | 출금 가입기간 안내 |
 | `src/App.jsx` | ScratchCard에 userId/scratchToken 전달 |
 | `src/App.css` | 봇 감지 경고 스타일 |
+
+---
+
+## v4.1 기프티콘 교환 개선 + 전화번호 제거 (2026-03-10) ✅
+
+### 변경 사항
+
+#### 기프티콘 교환 구조 개선 ✅
+- [x] `POST /api/gift-orders` 엔드포인트 추가 — 포인트 차감 + gift_orders 레코드 생성을 하나의 트랜잭션으로 처리
+- [x] MyPage `handleGiftExchange` — `usePoints` 대신 `createGiftOrder` API 호출로 변경
+- [x] `src/api/index.js` — `createGiftOrder(userId, giftId)` 함수 추가
+
+#### 전화번호 필드 제거 (개인정보 보호) ✅
+- [x] 회원가입 폼에서 전화번호 입력 필드 제거 (LoginPage.jsx)
+- [x] 서버 auth.js에서 전화번호 필수 검증/중복 체크 로직 제거
+- [x] 카카오/구글 소셜 로그인으로 1인 1계정 확인 가능 (phone 불필요)
+- [x] 기기 fingerprint 다중 계정 방지는 유지
+
+#### 어드민 기프티콘 관리 개선 ✅
+- [x] 기프티콘 주문 목록에 로그인 방식(카카오/구글) 표시 추가
+- [x] 관리자가 카카오 계정 정보(닉네임/이메일)로 사용자 식별 가능
+
+### 기프티콘 교환 플로우
+```
+사용자: MyPage → 기프티콘 선택 → 교환 클릭
+  ↓
+서버: POST /api/gift-orders → 포인트 차감 + gift_orders INSERT (status: pending)
+  ↓
+관리자: /admin → 기프티콘 관리 → 카카오 계정 확인 → 수동 발송
+  ↓
+관리자: '발송완료' 또는 '실패' 처리 (실패 시 포인트 환불)
+```
+
+### 파일 변경
+| 파일 | 작업 |
+|------|------|
+| `server/routes/gift.js` | POST /api/gift-orders 엔드포인트 추가 |
+| `server/routes/auth.js` | 전화번호 검증 로직 제거 |
+| `server/routes/admin.js` | gift-orders 쿼리에 provider 컬럼 추가 |
+| `src/api/index.js` | createGiftOrder 함수 추가 |
+| `src/pages/MyPage.jsx` | createGiftOrder 사용으로 변경 |
+| `src/pages/LoginPage.jsx` | 전화번호 입력 필드 제거 |
+| `src/admin/pages/PointsPage.jsx` | 카카오/구글 로그인 방식 표시 |
+
+---
+
+## v4.2 기프티콘 교환소 페이지 (2026-03-10) ✅
+
+### 신규 기능
+
+#### 기프티콘 교환소 독립 페이지 ✅
+- [x] `src/pages/GiftShopPage.jsx` — 신규 교환소 전용 페이지
+  - 오렌지 그라디언트 포인트 배너 (보유포인트 크게 표시)
+  - 카테고리 가로 스크롤 탭 (전체/카페/편의점/백화점/치킨/피자/버거)
+  - 리스트형 기프티콘 카드 (이모지+브랜드+상품명+포인트)
+  - 카드 선택 → 하단 고정 버튼 활성화 (카카오 #FEE500)
+  - 확인 모달: 상품정보 + 안내 (카카오톡 발송, 10분 소요, 취소불가)
+  - "💛 카카오톡으로 받기" 버튼 → 완료 팝업
+  - 교환 내역 토글 (상태별 배지)
+
+#### 하단 네비게이션 탭 추가 ✅
+- [x] BottomNav에 🎁 교환소 탭 추가 (홈 → 교환소 → 마이 → QR스캔 → 사업자)
+- [x] App.jsx에 GiftShopPage 라우팅 추가 (lazy load)
+
+#### 기프티콘 목록 변경 ✅
+- 카페: 스타벅스 아메리카노 5,000P, 이디야 아메리카노 3,000P
+- 편의점: CU 5천원권 5,000P, GS25 5천원권 5,000P
+- 백화점: 신세계 상품권 1만원 10,000P, 롯데 상품권 1만원 10,000P
+- 치킨: BBQ 황금올리브 15,000P, 교촌 허니콤보 15,000P
+- 피자: 도미노 피자 1판 20,000P
+- 버거: 롯데리아 세트 7,000P
+
+#### MyPage 기프티콘 섹션 제거 ✅
+- [x] MyPage에서 기프티콘 샵 섹션 완전 제거 (독립 페이지로 이동)
+
+#### 백엔드 트랜잭션 안정화 ✅
+- [x] `db.batch()` 메서드 추가 (TursoDatabase, LocalDatabase)
+- [x] Turso: `client.batch(stmts, 'write')` — 단일 HTTP 요청으로 트랜잭션 실행
+- [x] gift.js, admin.js — interactive transaction → batch 방식으로 변경
+
+### 파일 변경
+| 파일 | 작업 |
+|------|------|
+| `src/pages/GiftShopPage.jsx` | 신규 — 교환소 전용 페이지 |
+| `src/components/BottomNav.jsx` | 🎁 교환소 탭 추가 |
+| `src/App.jsx` | GiftShopPage 라우팅 + lazy load |
+| `src/App.css` | 교환소 페이지 전체 스타일 |
+| `src/pages/MyPage.jsx` | 기프티콘 샵 섹션 제거 |
+| `server/routes/gift.js` | 기프티콘 목록 변경 + batch 적용 |
+| `server/routes/admin.js` | 환불 로직 batch 적용 |
+| `server/db-turso.js` | batch() 메서드 추가 |
+| `server/db-local.js` | batch() 메서드 추가 |
 
 ---
 

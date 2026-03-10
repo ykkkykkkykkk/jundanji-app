@@ -58,6 +58,16 @@ class TursoDatabase {
     }
   }
 
+  // batch: 여러 SQL을 단일 HTTP 요청으로 트랜잭션 실행 (서버리스 환경에 안정적)
+  async batch(statements) {
+    const stmts = statements.map(s => ({ sql: s.sql, args: s.args || [] }))
+    const results = await this._client.batch(stmts, 'write')
+    return results.map(r => ({
+      lastInsertRowid: Number(r.lastInsertRowid) || 0,
+      changes: r.rowsAffected,
+    }))
+  }
+
   transaction(fn) {
     const self = this
     return async function (...args) {
@@ -73,7 +83,7 @@ class TursoDatabase {
         await tx.commit()
         return result
       } catch (e) {
-        await tx.rollback()
+        try { await tx.rollback() } catch (_) {}
         throw e
       }
     }

@@ -105,7 +105,7 @@ router.post('/scratch/complete', async (req, res) => {
   if (actualDuration < MIN_SCRATCH_DURATION_MS) {
     // 봇 의심 — 세션 무효 처리
     await db.prepare(
-      'UPDATE scratch_sessions SET completed_at = datetime("now", "localtime"), duration_ms = ?, is_valid = 0 WHERE token = ?'
+      `UPDATE scratch_sessions SET completed_at = datetime('now', 'localtime'), duration_ms = ?, is_valid = 0 WHERE token = ?`
     ).run(actualDuration, sessionToken)
 
     return res.status(403).json({
@@ -117,7 +117,7 @@ router.post('/scratch/complete', async (req, res) => {
 
   // 정상 완료
   await db.prepare(
-    'UPDATE scratch_sessions SET completed_at = datetime("now", "localtime"), duration_ms = ?, is_valid = 1 WHERE token = ?'
+    `UPDATE scratch_sessions SET completed_at = datetime('now', 'localtime'), duration_ms = ?, is_valid = 1 WHERE token = ?`
   ).run(actualDuration, sessionToken)
 
   res.json({ ok: true, data: { valid: true, durationMs: actualDuration } })

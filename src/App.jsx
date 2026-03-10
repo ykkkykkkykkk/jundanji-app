@@ -11,6 +11,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const NotificationPage = lazy(() => import('./pages/NotificationPage'))
 const QrScanPage = lazy(() => import('./pages/QrScanPage'))
+const GiftShopPage = lazy(() => import('./pages/GiftShopPage'))
 const PointAnimation = lazy(() => import('./components/PointAnimation'))
 const ScratchCard = lazy(() => import('./components/ScratchCard'))
 
@@ -209,7 +210,7 @@ export default function App() {
     setSelectedFlyer(null)
   }
 
-  const showBottomNav = ['main', 'mypage', 'admin', 'scan'].includes(page)
+  const showBottomNav = ['main', 'mypage', 'admin', 'scan', 'giftshop'].includes(page)
 
   const handleSplashFinish = useCallback(() => setShowSplash(false), [])
   const lazyFallback = <div className="lazy-loading">로딩 중...</div>
@@ -277,6 +278,16 @@ export default function App() {
             onLoginClick={() => setShowLogin(true)}
             onPointsEarned={handleQrPointsEarned}
             onBack={() => setPage('main')}
+          />
+        )}
+
+        {page === 'giftshop' && (
+          <GiftShopPage
+            points={points}
+            userId={userId}
+            isLoggedIn={!!auth}
+            onLoginClick={() => setShowLogin(true)}
+            onPointsChange={setPoints}
           />
         )}
 

@@ -148,7 +148,7 @@ router.get('/users/:userId/share-history', async (req, res) => {
   res.json({ ok: true, data })
 })
 
-// 포인트 사용
+// 포인트 사용 (기프티콘 교환)
 // POST /api/points/use  { userId, amount, description }
 router.post('/points/use', async (req, res) => {
   const { userId, amount, description } = req.body
@@ -171,11 +171,21 @@ router.post('/points/use', async (req, res) => {
     }
   }
 
+  // 기프티콘 교환인 경우 gift_orders에 기록
+  const isGift = description && description.startsWith('카카오 기프티콘 -')
+  const giftName = isGift ? description.replace('카카오 기프티콘 - ', '') : null
+
   const useTx = db.transaction(async (txDb) => {
     await txDb.prepare('UPDATE users SET points = points - ? WHERE id = ?').run(amount, userId)
     await txDb.prepare(
       'INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)'
     ).run(userId, amount, 'use', description || '포인트 사용')
+
+    if (isGift) {
+      await txDb.prepare(
+        'INSERT INTO gift_orders (user_id, gift_id, gift_name, amount) VALUES (?, ?, ?, ?)'
+      ).run(userId, giftName, giftName, amount)
+    }
   })
   try {
     await useTx()

@@ -2,7 +2,7 @@ const menuItems = [
   { key: 'dashboard', label: '대시보드', icon: '📊' },
   { key: 'flyers', label: '전단지 관리', icon: '📋' },
   { key: 'users', label: '유저 관리', icon: '👥' },
-  { key: 'points', label: '포인트 정산', icon: '💰' },
+  { key: 'points', label: '기프티콘 관리', icon: '🎁' },
   { key: 'business', label: '자영업자 관리', icon: '🏪' },
   { key: 'categories', label: '카테고리 관리', icon: '🏷️' },
   { key: 'inquiries', label: '1:1 문의', icon: '💬' },

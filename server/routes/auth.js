@@ -13,28 +13,11 @@ function signToken(userId) {
 }
 
 // 회원가입
-// POST /api/auth/register  { email, password, nickname, role, phone, deviceFingerprint }
+// POST /api/auth/register  { email, password, nickname, role, deviceFingerprint }
 router.post('/register', async (req, res) => {
-  const { email, password, nickname, role, phone, deviceFingerprint } = req.body
+  const { email, password, nickname, role, deviceFingerprint } = req.body
   if (!email || !password || !nickname) {
     return res.status(400).json({ ok: false, message: 'email, password, nickname 필수입니다.' })
-  }
-
-  // 전화번호 필수 검증
-  if (!phone || !phone.trim()) {
-    return res.status(400).json({ ok: false, message: '전화번호를 입력해주세요.' })
-  }
-
-  // 전화번호 형식 검증 (한국 휴대폰: 010-xxxx-xxxx)
-  const phoneClean = phone.replace(/[^0-9]/g, '')
-  if (!/^01[016789]\d{7,8}$/.test(phoneClean)) {
-    return res.status(400).json({ ok: false, message: '올바른 휴대폰 번호를 입력해주세요.' })
-  }
-
-  // 전화번호 중복 체크 (1인 1계정)
-  const phoneExists = await db.prepare('SELECT id FROM users WHERE phone = ?').get(phoneClean)
-  if (phoneExists) {
-    return res.status(409).json({ ok: false, message: '이미 가입된 전화번호입니다. 1인 1계정만 허용됩니다.' })
   }
 
   // 기기 fingerprint 다중 계정 체크
@@ -56,8 +39,8 @@ router.post('/register', async (req, res) => {
 
   const hash = bcrypt.hashSync(password, 10)
   const result = await db.prepare(
-    'INSERT INTO users (email, nickname, password_hash, role, phone) VALUES (?, ?, ?, ?, ?)'
-  ).run(email, nickname, hash, userRole, phoneClean)
+    'INSERT INTO users (email, nickname, password_hash, role) VALUES (?, ?, ?, ?)'
+  ).run(email, nickname, hash, userRole)
   const userId = result.lastInsertRowid
 
   // 기기 fingerprint 저장

@@ -1,6 +1,7 @@
 export default function BottomNav({ currentPage, onNavigate, isLoggedIn, userRole }) {
   const items = [
     { id: 'main', icon: '🏠', label: '홈', show: true },
+    { id: 'giftshop', icon: '🎁', label: '교환소', show: userRole !== 'business' },
     { id: 'mypage', icon: '👤', label: '마이', show: true },
     { id: 'scan', icon: '📷', label: 'QR스캔', show: !!isLoggedIn },
     { id: 'admin', icon: '🏢', label: '사업자', show: userRole === 'business' },
