@@ -79,3 +79,11 @@ export const updateCategory = (id, data) =>
   request(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
 export const deleteCategory = (id) =>
   request(`/categories/${id}`, { method: 'DELETE' })
+
+// 1:1 문의
+export const getInquiries = (params = {}) => {
+  const q = new URLSearchParams(params).toString()
+  return request(`/inquiries?${q}`)
+}
+export const answerInquiry = (id, answer) =>
+  request(`/inquiries/${id}/answer`, { method: 'PATCH', body: JSON.stringify({ answer }) })

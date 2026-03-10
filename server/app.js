@@ -20,6 +20,8 @@ const quizRouter = require('./routes/quiz')
 const qrRouter = require('./routes/qr')
 const businessRouter = require('./routes/business')
 const adminRouter = require('./routes/admin')
+const withdrawalRouter = require('./routes/withdrawal')
+const inquiryRouter = require('./routes/inquiry')
 
 const app = express()
 
@@ -51,7 +53,7 @@ app.get('/api/debug/env', (req, res) => {
       JWT_SECRET: !!process.env.JWT_SECRET,
       KAKAO_CLIENT_ID: mask(process.env.KAKAO_CLIENT_ID),
       KAKAO_REDIRECT_URI: process.env.KAKAO_REDIRECT_URI || '(not set)',
-      KAKAO_CLIENT_SECRET: !!process.env.KAKAO_CLIENT_SECRET,
+      KAKAO_CLIENT_SECRET: mask(process.env.KAKAO_CLIENT_SECRET),
       FRONTEND_URL: process.env.FRONTEND_URL || '(not set)',
     }
   })
@@ -70,6 +72,8 @@ app.use('/api', quizRouter)
 app.use('/api', qrRouter)
 app.use('/api/business', businessRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api', withdrawalRouter)
+app.use('/api', inquiryRouter)
 
 // 만료 전단지 자동 삭제 (Vercel Cron)
 app.get('/api/cron/cleanup', async (req, res) => {

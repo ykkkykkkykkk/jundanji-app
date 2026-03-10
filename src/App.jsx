@@ -1,16 +1,18 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import MainPage from './pages/MainPage'
-import DetailPage from './pages/DetailPage'
-import MyPage from './pages/MyPage'
-import LoginPage from './pages/LoginPage'
-import AdminPage from './pages/AdminPage'
-import NotificationPage from './pages/NotificationPage'
-import QrScanPage from './pages/QrScanPage'
 import BottomNav from './components/BottomNav'
-import PointAnimation from './components/PointAnimation'
 import SplashScreen from './components/SplashScreen'
-import ScratchCard from './components/ScratchCard'
 import { getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory, updateUserRole } from './api/index'
+
+// 코드 스플리팅: 초기 로딩에 불필요한 페이지/컴포넌트를 lazy 로드
+const DetailPage = lazy(() => import('./pages/DetailPage'))
+const MyPage = lazy(() => import('./pages/MyPage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
+const NotificationPage = lazy(() => import('./pages/NotificationPage'))
+const QrScanPage = lazy(() => import('./pages/QrScanPage'))
+const PointAnimation = lazy(() => import('./components/PointAnimation'))
+const ScratchCard = lazy(() => import('./components/ScratchCard'))
 
 const GUEST_USER_ID = 1  // 게스트 사용자
 
@@ -207,13 +209,14 @@ export default function App() {
   const showBottomNav = ['main', 'mypage', 'admin', 'scan'].includes(page)
 
   const handleSplashFinish = useCallback(() => setShowSplash(false), [])
+  const lazyFallback = <div className="lazy-loading">로딩 중...</div>
 
   if (showSplash) {
     return <SplashScreen onFinish={handleSplashFinish} />
   }
 
   if (showLogin) {
-    return <LoginPage onLogin={handleLogin} />
+    return <Suspense fallback={lazyFallback}><LoginPage onLogin={handleLogin} /></Suspense>
   }
 
   return (
@@ -230,66 +233,68 @@ export default function App() {
         />
       )}
 
-      {page === 'detail' && selectedFlyer && (
-        <DetailPage
-          flyer={selectedFlyer}
-          onBack={() => {
-            setPage('main')
-            requestAnimationFrame(() => window.scrollTo(0, scrollPosRef.current))
-          }}
-          isBookmarked={bookmarkedIds.has(selectedFlyer.id)}
-          onBookmarkToggle={() => handleBookmarkToggle(selectedFlyer)}
-          userId={userId}
-          userRole={userRole}
-          onQuizPoints={handleQuizPoints}
-        />
-      )}
+      <Suspense fallback={lazyFallback}>
+        {page === 'detail' && selectedFlyer && (
+          <DetailPage
+            flyer={selectedFlyer}
+            onBack={() => {
+              setPage('main')
+              requestAnimationFrame(() => window.scrollTo(0, scrollPosRef.current))
+            }}
+            isBookmarked={bookmarkedIds.has(selectedFlyer.id)}
+            onBookmarkToggle={() => handleBookmarkToggle(selectedFlyer)}
+            userId={userId}
+            userRole={userRole}
+            onQuizPoints={handleQuizPoints}
+          />
+        )}
 
-      {page === 'admin' && (
-        <AdminPage
-          onBack={() => setPage('main')}
-          token={auth?.token}
-          userId={userId}
-        />
-      )}
+        {page === 'admin' && (
+          <AdminPage
+            onBack={() => setPage('main')}
+            token={auth?.token}
+            userId={userId}
+          />
+        )}
 
-      {page === 'notifications' && (
-        <NotificationPage
-          onBack={() => setPage('main')}
-          onUnreadChange={setUnreadCount}
-        />
-      )}
+        {page === 'notifications' && (
+          <NotificationPage
+            onBack={() => setPage('main')}
+            onUnreadChange={setUnreadCount}
+          />
+        )}
 
-      {page === 'scan' && (
-        <QrScanPage
-          userId={userId}
-          userRole={userRole}
-          isLoggedIn={!!auth}
-          onLoginClick={() => setShowLogin(true)}
-          onPointsEarned={handleQrPointsEarned}
-          onBack={() => setPage('main')}
-        />
-      )}
+        {page === 'scan' && (
+          <QrScanPage
+            userId={userId}
+            userRole={userRole}
+            isLoggedIn={!!auth}
+            onLoginClick={() => setShowLogin(true)}
+            onPointsEarned={handleQrPointsEarned}
+            onBack={() => setPage('main')}
+          />
+        )}
 
-      {page === 'mypage' && (
-        <MyPage
-          points={points}
-          nickname={nickname}
-          shareHistory={shareHistory}
-          quizHistory={quizHistory}
-          visitHistory={visitHistory}
-          isLoggedIn={!!auth}
-          onLoginClick={() => setShowLogin(true)}
-          onLogout={handleLogout}
-          onNicknameChange={setNickname}
-          onPointsChange={setPoints}
-          token={auth?.token}
-          userId={userId}
-          bookmarkedFlyers={bookmarkedFlyers}
-          onBookmarkToggle={handleBookmarkToggle}
-          onFlyerClick={handleFlyerClick}
-        />
-      )}
+        {page === 'mypage' && (
+          <MyPage
+            points={points}
+            nickname={nickname}
+            shareHistory={shareHistory}
+            quizHistory={quizHistory}
+            visitHistory={visitHistory}
+            isLoggedIn={!!auth}
+            onLoginClick={() => setShowLogin(true)}
+            onLogout={handleLogout}
+            onNicknameChange={setNickname}
+            onPointsChange={setPoints}
+            token={auth?.token}
+            userId={userId}
+            bookmarkedFlyers={bookmarkedFlyers}
+            onBookmarkToggle={handleBookmarkToggle}
+            onFlyerClick={handleFlyerClick}
+          />
+        )}
+      </Suspense>
 
       {showBottomNav && (
         <BottomNav
@@ -300,17 +305,19 @@ export default function App() {
         />
       )}
 
-      {showScratchCard && scratchFlyer && (
-        <ScratchCard
-          flyer={scratchFlyer}
-          onComplete={handleScratchComplete}
-          onClose={handleScratchClose}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showScratchCard && scratchFlyer && (
+          <ScratchCard
+            flyer={scratchFlyer}
+            onComplete={handleScratchComplete}
+            onClose={handleScratchClose}
+          />
+        )}
 
-      {showPointAnim && (
-        <PointAnimation points={earnedPoints} onClose={() => setShowPointAnim(false)} />
-      )}
+        {showPointAnim && (
+          <PointAnimation points={earnedPoints} onClose={() => setShowPointAnim(false)} />
+        )}
+      </Suspense>
 
       {showRoleSelection && (
         <div className="role-selection-overlay">

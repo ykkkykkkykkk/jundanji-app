@@ -321,3 +321,40 @@ export async function getChargeHistory(token) {
     headers: { Authorization: `Bearer ${token}` },
   })
 }
+
+// ======== 출금 API ========
+
+// 은행 목록 조회
+export async function getBanks() {
+  return fetchJSON(`${BASE}/banks`)
+}
+
+// 출금 신청
+export async function requestWithdrawal(userId, amount, bankName, accountNumber, accountHolder) {
+  return fetchJSON(`${BASE}/withdrawals`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, amount, bankName, accountNumber, accountHolder }),
+  })
+}
+
+// 출금 내역 조회
+export async function getWithdrawalHistory(userId) {
+  return fetchJSON(`${BASE}/users/${userId}/withdrawals`)
+}
+
+// ======== 1:1 문의 API ========
+
+// 문의 등록
+export async function createInquiry(userId, category, title, content) {
+  return fetchJSON(`${BASE}/inquiries`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, category, title, content }),
+  })
+}
+
+// 내 문의 내역 조회
+export async function getInquiryHistory(userId) {
+  return fetchJSON(`${BASE}/users/${userId}/inquiries`)
+}

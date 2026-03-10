@@ -225,6 +225,53 @@ router.patch('/withdrawals/:id/status', requireAdmin, async (req, res) => {
   res.json({ ok: true, message: `출금 신청이 '${status}'로 처리되었습니다.` })
 })
 
+// ======================== 1:1 문의 관리 ========================
+
+router.get('/inquiries', requireAdmin, async (req, res) => {
+  const { page = 1, limit = 20, status = '' } = req.query
+  const offset = (page - 1) * limit
+
+  let where = 'WHERE 1=1'
+  const params = []
+  if (status) {
+    where += ' AND i.status = ?'
+    params.push(status)
+  }
+
+  const totalRow = await db.prepare(`SELECT COUNT(*) as count FROM inquiries i ${where}`).get(...params)
+  const inquiries = await db.prepare(`
+    SELECT i.*, u.nickname, u.email
+    FROM inquiries i
+    JOIN users u ON i.user_id = u.id
+    ${where}
+    ORDER BY i.created_at DESC
+    LIMIT ? OFFSET ?
+  `).all(...params, Number(limit), Number(offset))
+
+  res.json({ ok: true, inquiries, total: totalRow.count, page: Number(page), limit: Number(limit) })
+})
+
+router.patch('/inquiries/:id/answer', requireAdmin, async (req, res) => {
+  const { id } = req.params
+  const { answer } = req.body
+
+  if (!answer || !answer.trim()) {
+    return res.status(400).json({ ok: false, message: '답변 내용을 입력해주세요.' })
+  }
+
+  const inquiry = await db.prepare('SELECT * FROM inquiries WHERE id = ?').get(id)
+  if (!inquiry) {
+    return res.status(404).json({ ok: false, message: '문의를 찾을 수 없습니다.' })
+  }
+
+  const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).replace('T', ' ')
+  await db.prepare(
+    'UPDATE inquiries SET answer = ?, status = ?, answered_at = ? WHERE id = ?'
+  ).run(answer.trim(), 'answered', now, id)
+
+  res.json({ ok: true, message: '답변이 등록되었습니다.' })
+})
+
 // ======================== 자영업자 관리 ========================
 
 router.get('/business', requireAdmin, async (req, res) => {

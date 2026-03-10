@@ -225,7 +225,7 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
                 style={{ background: flyer.storeBgColor }}
               >
                 {flyer.imageUrl ? (
-                  <img src={flyer.imageUrl} alt={flyer.storeName} className="flyer-card-thumb" />
+                  <img src={flyer.imageUrl} alt={flyer.storeName} className="flyer-card-thumb" loading="lazy" />
                 ) : (
                   <div
                     className="store-emoji-wrap"

@@ -73,7 +73,7 @@ export default function DetailPage({ flyer, onBack, isBookmarked, onBookmarkTogg
         style={{ background: `linear-gradient(160deg, ${flyer.storeColor}18, ${flyer.storeBgColor})` }}
       >
         {flyer.imageUrl ? (
-          <img src={flyer.imageUrl} alt={flyer.storeName} className="detail-hero-img" />
+          <img src={flyer.imageUrl} alt={flyer.storeName} className="detail-hero-img" loading="lazy" />
         ) : (
           <div className="detail-store-emoji">{flyer.storeEmoji}</div>
         )}

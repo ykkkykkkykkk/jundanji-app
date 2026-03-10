@@ -1,6 +1,6 @@
 # 전단지 앱 - 프로젝트 진행 현황
 
-> 마지막 업데이트: 2026-02-28 (v3.1 안정화 패치)
+> 마지막 업데이트: 2026-03-09 (v3.5 포인트 출금 플로우)
 
 ---
 
@@ -256,6 +256,95 @@
 | `src/components/ImageCropper.jsx` | 신규 생성 |
 | `src/pages/AdminPage.jsx` | 크롭 모달 연동 |
 | `src/App.css` | 크롭 에디터 스타일 |
+
+---
+
+## v3.5 포인트 출금 플로우 (2026-03-09) ✅
+
+### 신규 기능
+
+#### 사용자 출금 신청 ✅
+- [x] `server/routes/withdrawal.js` — 출금 라우트 신규 생성
+  - `POST /api/withdrawals` — 출금 신청 (검증: 최소 1,000P, 최대 500,000P, 중복 방지)
+  - `GET /api/users/:userId/withdrawals` — 출금 내역 조회 (최근 50건)
+  - `GET /api/banks` — 은행 목록 조회 (19개 은행)
+- [x] `server/app.js` — withdrawal 라우터 등록
+- [x] `src/api/index.js` — requestWithdrawal, getWithdrawalHistory, getBanks 함수 추가
+
+#### MyPage 출금 신청 UI ✅
+- [x] 출금 신청 폼 (금액, 은행 선택, 계좌번호, 예금주)
+- [x] "전액" 버튼 (보유 포인트 전액 입력)
+- [x] 실시간 입력 검증 (금액 부족, 필수값 체크)
+- [x] 출금 내역 토글 (대기/승인/거절 상태 배지)
+- [x] 다크모드 지원
+
+#### 출금 검증 로직 ✅
+- [x] 최소 출금액: 1,000P
+- [x] 최대 출금액: 500,000P
+- [x] 포인트 잔액 확인
+- [x] 대기 중인 출금 신청 중복 방지
+- [x] 계좌번호 형식 검증 (8~20자리)
+- [x] 예금주명 최소 2자
+
+### 파일 변경
+| 파일 | 작업 |
+|------|------|
+| `server/routes/withdrawal.js` | 신규 생성 — 출금 API |
+| `server/app.js` | withdrawal 라우터 등록 |
+| `src/api/index.js` | 출금 API 클라이언트 함수 3개 |
+| `src/pages/MyPage.jsx` | 출금 신청 폼 + 출금 내역 UI |
+| `src/App.css` | 출금 관련 스타일 추가 |
+
+### 출금 플로우
+```
+사용자: MyPage → 출금 신청 폼 작성 → 제출
+  ↓
+서버: 검증 (금액/잔액/중복) → withdrawals 테이블 INSERT (status: pending)
+  ↓
+관리자: /admin → 포인트 정산 → 승인/거절
+  ↓ (승인 시)
+서버: 포인트 차감 + point_transactions 기록
+```
+
+---
+
+## v3.4 성능 최적화 (2026-03-09) ✅
+
+### 코드 스플리팅 (React.lazy + Suspense) ✅
+- [x] DetailPage, MyPage, LoginPage, AdminPage, NotificationPage, QrScanPage lazy 로드
+- [x] ScratchCard, PointAnimation 모달 컴포넌트 lazy 로드
+- [x] MainPage, BottomNav, SplashScreen은 초기 렌더링에 필수이므로 정적 import 유지
+- [x] Suspense fallback UI (로딩 중...) 추가
+
+### 이미지 lazy loading ✅
+- [x] MainPage 전단지 카드 썸네일 `loading="lazy"`
+- [x] DetailPage 히어로 이미지 `loading="lazy"`
+- [x] MyPage 즐겨찾기 썸네일 `loading="lazy"`
+- [x] ScratchCard 배경 이미지 `loading="lazy"`
+
+### Vite 번들 최적화 ✅
+- [x] manualChunks로 vendor 청크 분리 (react/react-dom, qrcode)
+- [x] lazy 로드된 페이지들이 별도 청크로 자동 분리
+
+### 미사용 의존성 제거 ✅
+- [x] `react-router-dom` 제거 (~40KB 번들 절감)
+
+### 외부 리소스 로딩 최적화 ✅
+- [x] Google Fonts 비동기 로드 (`preload` → `stylesheet` 전환)
+- [x] Kakao SDK `defer` 속성 추가 (렌더링 차단 방지)
+
+### 파일 변경
+| 파일 | 작업 |
+|------|------|
+| `src/App.jsx` | lazy/Suspense 코드 스플리팅 적용 |
+| `src/pages/MainPage.jsx` | img lazy loading |
+| `src/pages/DetailPage.jsx` | img lazy loading |
+| `src/pages/MyPage.jsx` | img lazy loading |
+| `src/components/ScratchCard.jsx` | img lazy loading |
+| `vite.config.js` | manualChunks 벤더 청크 분리 |
+| `index.html` | Fonts 비동기, Kakao SDK defer |
+| `src/App.css` | lazy-loading 스타일 추가 |
+| `package.json` | react-router-dom 제거 |
 
 ---
 

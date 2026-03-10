@@ -157,6 +157,18 @@ const schemaSQL = `
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL UNIQUE,
     sort_order  INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS inquiries (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category    TEXT NOT NULL DEFAULT '일반',
+    title       TEXT NOT NULL,
+    content     TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    answer      TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    answered_at TEXT
   )
 `
 

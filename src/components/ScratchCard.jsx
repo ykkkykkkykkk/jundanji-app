@@ -149,7 +149,7 @@ export default function ScratchCard({ flyer, onComplete, onClose }) {
           >
             {/* 배경 이미지 or 이모지 — 340x400 전체를 꽉 채움 */}
             {flyer.imageUrl ? (
-              <img src={flyer.imageUrl} alt={flyer.storeName} className="scratch-flyer-img" />
+              <img src={flyer.imageUrl} alt={flyer.storeName} className="scratch-flyer-img" loading="lazy" />
             ) : (
               <div className="scratch-flyer-emoji-bg" style={{ color: flyer.storeColor + '25' }}>
                 {flyer.storeEmoji}
