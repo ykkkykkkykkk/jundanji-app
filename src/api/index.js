@@ -39,13 +39,13 @@ export async function getFlyerDetail(id) {
   return fetchJSON(`${BASE}/flyers/${id}`)
 }
 
-// 공유 처리 (포인트 적립)
+// 공유 처리 (포인트 적립) — scratchToken으로 서버 검증
 // 중복 공유 시 { ok: false, status: 409 } 반환 (throw 하지 않음)
-export async function shareFlyer(userId, flyerId) {
+export async function shareFlyer(userId, flyerId, scratchToken) {
   const res = await fetch(`${BASE}/share`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, flyerId }),
+    body: JSON.stringify({ userId, flyerId, scratchToken }),
   })
   const data = await res.json()
   return { ok: res.ok, status: res.status, data: data.data, message: data.message }
@@ -62,11 +62,11 @@ export async function getUserShareHistory(userId) {
 }
 
 // 회원가입
-export async function register(email, password, nickname, role) {
+export async function register(email, password, nickname, role, phone, deviceFingerprint) {
   return fetchJSON(`${BASE}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, nickname, role }),
+    body: JSON.stringify({ email, password, nickname, role, phone, deviceFingerprint }),
   })
 }
 
@@ -341,6 +341,77 @@ export async function requestWithdrawal(userId, amount, bankName, accountNumber,
 // 출금 내역 조회
 export async function getWithdrawalHistory(userId) {
   return fetchJSON(`${BASE}/users/${userId}/withdrawals`)
+}
+
+// ======== 보안 API ========
+
+// 기기 fingerprint 생성
+export function generateDeviceFingerprint() {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  ctx.textBaseline = 'top'
+  ctx.font = '14px Arial'
+  ctx.fillText('fingerprint', 2, 2)
+  const canvasData = canvas.toDataURL()
+
+  const raw = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || '',
+    navigator.maxTouchPoints || 0,
+    canvasData.slice(-50),
+  ].join('|')
+
+  // simple hash
+  let hash = 0
+  for (let i = 0; i < raw.length; i++) {
+    const chr = raw.charCodeAt(i)
+    hash = ((hash << 5) - hash) + chr
+    hash |= 0
+  }
+  return 'df_' + Math.abs(hash).toString(36) + '_' + raw.length.toString(36)
+}
+
+// 기기 체크 (회원가입 전)
+export async function checkDevice(fingerprint) {
+  const res = await fetch(`${BASE}/security/device-check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fingerprint }),
+  })
+  return res.json()
+}
+
+// 기기 등록 (로그인 후)
+export async function registerDevice(userId, fingerprint) {
+  return fetchJSON(`${BASE}/security/device`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, fingerprint }),
+  })
+}
+
+// 긁기 세션 시작
+export async function startScratchSession(userId, flyerId) {
+  return fetchJSON(`${BASE}/scratch/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, flyerId }),
+  })
+}
+
+// 긁기 세션 완료
+export async function completeScratchSession(sessionToken, durationMs) {
+  const res = await fetch(`${BASE}/scratch/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionToken, durationMs }),
+  })
+  const data = await res.json()
+  return { ok: data.ok, message: data.message, botDetected: data.botDetected, data: data.data }
 }
 
 // ======== 1:1 문의 API ========

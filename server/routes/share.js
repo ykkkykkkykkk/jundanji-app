@@ -3,14 +3,28 @@ const db = require('../db')
 
 const router = Router()
 
-// 공유 처리 (포인트 적립)
+// 공유 처리 (포인트 적립) — 포인트는 서버에서만 결정
 // POST /api/share
-// body: { userId, flyerId }
+// body: { userId, flyerId, scratchToken }
 router.post('/share', async (req, res) => {
-  const { userId, flyerId } = req.body
+  const { userId, flyerId, scratchToken } = req.body
 
   if (!userId || !flyerId) {
     return res.status(400).json({ ok: false, message: 'userId, flyerId 필수입니다.' })
+  }
+
+  // 긁기 세션 토큰 검증 (서버에서 유효한 긁기를 완료했는지 확인)
+  if (scratchToken) {
+    const session = await db.prepare(
+      'SELECT * FROM scratch_sessions WHERE token = ? AND user_id = ? AND flyer_id = ?'
+    ).get(scratchToken, userId, flyerId)
+
+    if (!session) {
+      return res.status(403).json({ ok: false, message: '유효하지 않은 긁기 세션입니다.' })
+    }
+    if (!session.completed_at || !session.is_valid) {
+      return res.status(403).json({ ok: false, message: '긁기가 완료되지 않았거나 무효 처리된 세션입니다.' })
+    }
   }
 
   await db.ensureUser(userId)
@@ -143,10 +157,18 @@ router.post('/points/use', async (req, res) => {
   }
 
   await db.ensureUser(userId)
-  const user = await db.prepare('SELECT id, points FROM users WHERE id = ?').get(userId)
+  const user = await db.prepare('SELECT id, points, created_at FROM users WHERE id = ?').get(userId)
   if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
   if (user.points < amount) {
     return res.status(400).json({ ok: false, message: `포인트가 부족합니다. (보유: ${user.points}P)` })
+  }
+
+  // 최소 가입기간 7일 체크 (포인트 전환/사용)
+  if (user.created_at) {
+    const diffDays = Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24))
+    if (diffDays < 7) {
+      return res.status(403).json({ ok: false, message: `가입 후 7일이 지나야 포인트를 사용할 수 있습니다. (${7 - diffDays}일 남음)` })
+    }
   }
 
   const useTx = db.transaction(async (txDb) => {

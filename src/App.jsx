@@ -173,10 +173,13 @@ export default function App() {
     setShowScratchCard(true)
   }
 
-  const handleScratchComplete = (flyer) => {
+  const [lastScratchToken, setLastScratchToken] = useState(null)
+
+  const handleScratchComplete = (flyer, scratchToken) => {
     setShowScratchCard(false)
     setScratchFlyer(null)
     setSelectedFlyer(flyer)
+    setLastScratchToken(scratchToken || null)
     setPage('detail')
   }
 
@@ -239,6 +242,7 @@ export default function App() {
             flyer={selectedFlyer}
             onBack={() => {
               setPage('main')
+              setLastScratchToken(null)
               requestAnimationFrame(() => window.scrollTo(0, scrollPosRef.current))
             }}
             isBookmarked={bookmarkedIds.has(selectedFlyer.id)}
@@ -246,6 +250,7 @@ export default function App() {
             userId={userId}
             userRole={userRole}
             onQuizPoints={handleQuizPoints}
+            scratchToken={lastScratchToken}
           />
         )}
 
@@ -309,6 +314,7 @@ export default function App() {
         {showScratchCard && scratchFlyer && (
           <ScratchCard
             flyer={scratchFlyer}
+            userId={userId}
             onComplete={handleScratchComplete}
             onClose={handleScratchClose}
           />

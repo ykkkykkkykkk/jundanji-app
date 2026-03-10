@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import { startScratchSession, completeScratchSession } from '../api/index'
 
 const CARD_W = 340
 const CARD_H = 400
@@ -15,12 +16,25 @@ function getDiscountRate(original, sale) {
   return Math.round((1 - sale / original) * 100)
 }
 
-export default function ScratchCard({ flyer, onComplete, onClose }) {
+export default function ScratchCard({ flyer, userId, onComplete, onClose }) {
   const canvasRef = useRef(null)
   const isDrawing = useRef(false)
   const [revealed, setRevealed] = useState(false)
   const [percentage, setPercentage] = useState(0)
+  const [botWarning, setBotWarning] = useState(false)
   const checkInterval = useRef(null)
+  const scratchStartTime = useRef(null)
+  const sessionTokenRef = useRef(null)
+
+  // 긁기 세션 시작 (서버에 기록)
+  useEffect(() => {
+    if (userId && flyer?.id) {
+      startScratchSession(userId, flyer.id)
+        .then(data => { sessionTokenRef.current = data.sessionToken })
+        .catch(() => {})
+    }
+    scratchStartTime.current = Date.now()
+  }, [userId, flyer?.id])
 
   // 캔버스에 은박 코팅 그리기 (고정 340x400)
   useEffect(() => {
@@ -106,7 +120,24 @@ export default function ScratchCard({ flyer, onComplete, onClose }) {
   useEffect(() => {
     if (revealed) {
       clearInterval(checkInterval.current)
-      setTimeout(() => onComplete(flyer), 800)
+      const durationMs = Date.now() - (scratchStartTime.current || Date.now())
+
+      // 서버에 긁기 완료 보고
+      if (sessionTokenRef.current) {
+        completeScratchSession(sessionTokenRef.current, durationMs)
+          .then(result => {
+            if (result.botDetected) {
+              setBotWarning(true)
+              return
+            }
+            setTimeout(() => onComplete(flyer, sessionTokenRef.current), 800)
+          })
+          .catch(() => {
+            setTimeout(() => onComplete(flyer, sessionTokenRef.current), 800)
+          })
+      } else {
+        setTimeout(() => onComplete(flyer, null), 800)
+      }
     }
   }, [revealed, flyer, onComplete])
 
@@ -209,8 +240,17 @@ export default function ScratchCard({ flyer, onComplete, onClose }) {
           />
         </div>
 
-        {revealed && (
+        {revealed && !botWarning && (
           <div className="scratch-complete-msg">전단지가 공개되었습니다!</div>
+        )}
+
+        {botWarning && (
+          <div className="scratch-bot-warning">
+            <div className="scratch-bot-icon">🚫</div>
+            <div className="scratch-bot-text">비정상적으로 빠른 긁기가 감지되었습니다.</div>
+            <div className="scratch-bot-sub">이 긁기는 무효 처리됩니다.</div>
+            <button className="scratch-bot-btn" onClick={onClose}>닫기</button>
+          </div>
         )}
       </div>
     </div>

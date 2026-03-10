@@ -46,9 +46,23 @@ router.post('/withdrawals', async (req, res) => {
   await db.ensureUser(userId)
 
   // 포인트 충분한지 확인
-  const user = await db.prepare('SELECT points FROM users WHERE id = ?').get(userId)
+  const user = await db.prepare('SELECT points, created_at FROM users WHERE id = ?').get(userId)
   if (!user || user.points < amount) {
     return res.status(400).json({ ok: false, message: '포인트가 부족합니다.' })
+  }
+
+  // 최소 가입기간 7일 체크
+  if (user.created_at) {
+    const createdDate = new Date(user.created_at)
+    const now = new Date()
+    const diffDays = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24))
+    if (diffDays < 7) {
+      const remaining = 7 - diffDays
+      return res.status(403).json({
+        ok: false,
+        message: `가입 후 7일이 지나야 출금이 가능합니다. (${remaining}일 남음)`,
+      })
+    }
   }
 
   // 대기 중인 출금 신청이 있는지 확인

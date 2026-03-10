@@ -1,6 +1,6 @@
 # 전단지 앱 - 프로젝트 진행 현황
 
-> 마지막 업데이트: 2026-03-09 (v3.5 포인트 출금 플로우)
+> 마지막 업데이트: 2026-03-10 (v4.0 보안 기능 5종)
 
 ---
 
@@ -345,6 +345,68 @@
 | `index.html` | Fonts 비동기, Kakao SDK defer |
 | `src/App.css` | lazy-loading 스타일 추가 |
 | `package.json` | react-router-dom 제거 |
+
+---
+
+## v4.0 보안 기능 5종 (2026-03-10) ✅
+
+### 신규 기능
+
+#### 1. 기기 ID 체크 (다중 계정 방지) ✅
+- [x] 브라우저 fingerprint 생성 (Canvas, 화면, UA, 시간대 등 조합 해시)
+- [x] `device_fingerprints` 테이블 (fingerprint ↔ user_id 매핑)
+- [x] 회원가입 전 기기 체크 (`POST /api/security/device-check`)
+- [x] 같은 기기에서 최대 2개 계정까지 허용, 초과 시 차단
+- [x] 로그인 시 기기 등록 (`POST /api/security/device`)
+
+#### 2. 긁기 속도 감지 (봇 방지) ✅
+- [x] `scratch_sessions` 테이블 (세션 토큰, 시작/완료 시간, 유효성)
+- [x] 긁기 시작 시 서버에 세션 등록 (`POST /api/scratch/start`)
+- [x] 긁기 완료 시 서버 검증 (`POST /api/scratch/complete`)
+- [x] 최소 3초 미만 긁기 → 봇 의심 → 무효 처리 + 경고 UI
+- [x] 서버 시간 기반 duration 이중 검증 (클라이언트 조작 방지)
+- [x] ScratchCard에 봇 감지 경고 모달 + CSS 스타일
+
+#### 3. 포인트 서버 검증 ✅
+- [x] 공유 시 `scratchToken` 필수 전달 → 서버에서 유효한 긁기 세션인지 검증
+- [x] 긁기 미완료/무효 세션 → 포인트 적립 거부
+- [x] 포인트 금액은 서버 DB 기준으로만 결정 (클라이언트 조작 불가)
+- [x] shareFlyer API에 scratchToken 파라미터 추가
+
+#### 4. 출금 최소 가입기간 7일 ✅
+- [x] `withdrawal.js` — 가입일(created_at) 기준 7일 미경과 시 출금 거부
+- [x] `share.js` — 포인트 사용(교환)에도 7일 가입기간 체크 적용
+- [x] 남은 일수 안내 메시지 반환
+- [x] MyPage 출금 폼에 "가입 후 7일 경과 필요" 안내 표시
+
+#### 5. 전화번호 인증 (1인 1계정) ✅
+- [x] `users` 테이블에 `phone` 컬럼 추가 (마이그레이션)
+- [x] 회원가입 시 전화번호 필수 입력 (010-xxxx-xxxx 형식)
+- [x] 한국 휴대폰 번호 정규식 검증 (`01[016789]`)
+- [x] 전화번호 UNIQUE 체크 — 동일 번호 중복 가입 차단
+- [x] LoginPage에 전화번호 입력 필드 + 자동 포맷팅 (하이픈 자동 삽입)
+
+### 인프라 변경
+- [x] `server/db.js` — device_fingerprints, scratch_sessions 테이블 추가
+- [x] `server/db.js` — users 테이블에 phone, device_fingerprint 컬럼 마이그레이션
+- [x] `server/routes/security.js` — 보안 라우트 신규 생성 (5개 엔드포인트)
+- [x] `server/app.js` — security 라우터 등록
+
+### 파일 변경
+| 파일 | 작업 |
+|------|------|
+| `server/db.js` | 스키마 + 마이그레이션 추가 |
+| `server/routes/security.js` | 신규 — 기기체크/긁기세션 API |
+| `server/routes/auth.js` | 전화번호 + 기기 fingerprint 검증 |
+| `server/routes/share.js` | scratchToken 검증 + 가입기간 체크 |
+| `server/routes/withdrawal.js` | 가입 7일 미만 출금 차단 |
+| `server/app.js` | security 라우터 등록 |
+| `src/api/index.js` | 보안 API 함수 6개 + fingerprint 생성기 |
+| `src/pages/LoginPage.jsx` | 전화번호 입력 + 기기 체크 |
+| `src/components/ScratchCard.jsx` | 긁기 세션 + 봇 감지 |
+| `src/pages/MyPage.jsx` | 출금 가입기간 안내 |
+| `src/App.jsx` | ScratchCard에 userId/scratchToken 전달 |
+| `src/App.css` | 봇 감지 경고 스타일 |
 
 ---
 

@@ -284,7 +284,7 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
                       전액
                     </button>
                   </div>
-                  <div className="withdraw-hint">보유: {points.toLocaleString()}P / 최소 5,000P</div>
+                  <div className="withdraw-hint">보유: {points.toLocaleString()}P / 최소 5,000P / 가입 후 7일 경과 필요</div>
                 </div>
 
                 <div className="withdraw-field">

@@ -1,14 +1,28 @@
-import { useState } from 'react'
-import { login, register } from '../api/index'
+import { useState, useEffect } from 'react'
+import { login, register, generateDeviceFingerprint, checkDevice, registerDevice } from '../api/index'
 
 export default function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('login')  // 'login' | 'register'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [nickname, setNickname] = useState('')
+  const [phone, setPhone] = useState('')
   const [role, setRole] = useState('user')  // 'user' | 'business'
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [deviceFp, setDeviceFp] = useState('')
+
+  // 기기 fingerprint 생성
+  useEffect(() => {
+    setDeviceFp(generateDeviceFingerprint())
+  }, [])
+
+  const formatPhone = (value) => {
+    const nums = value.replace(/[^0-9]/g, '').slice(0, 11)
+    if (nums.length <= 3) return nums
+    if (nums.length <= 7) return nums.slice(0, 3) + '-' + nums.slice(3)
+    return nums.slice(0, 3) + '-' + nums.slice(3, 7) + '-' + nums.slice(7)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -18,9 +32,23 @@ export default function LoginPage({ onLogin }) {
       let data
       if (mode === 'login') {
         data = await login(email, password)
+        // 로그인 시 기기 등록
+        if (deviceFp) registerDevice(data.userId, deviceFp).catch(() => {})
       } else {
         if (!nickname.trim()) { setError('닉네임을 입력해주세요.'); setLoading(false); return }
-        data = await register(email, password, nickname.trim(), role)
+        if (!phone.trim()) { setError('전화번호를 입력해주세요.'); setLoading(false); return }
+
+        // 기기 다중 계정 체크
+        if (deviceFp) {
+          const deviceCheck = await checkDevice(deviceFp)
+          if (deviceCheck.blocked) {
+            setError(deviceCheck.message)
+            setLoading(false)
+            return
+          }
+        }
+
+        data = await register(email, password, nickname.trim(), role, phone, deviceFp)
       }
       localStorage.setItem('token', data.token)
       localStorage.setItem('userId', String(data.userId))
@@ -60,6 +88,14 @@ export default function LoginPage({ onLogin }) {
                 placeholder="닉네임"
                 value={nickname}
                 onChange={e => setNickname(e.target.value)}
+                required
+              />
+              <input
+                className="login-input"
+                type="tel"
+                placeholder="전화번호 (010-0000-0000)"
+                value={phone}
+                onChange={e => setPhone(formatPhone(e.target.value))}
                 required
               />
               <div className="role-selector">

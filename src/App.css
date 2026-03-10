@@ -1994,6 +1994,48 @@ body {
   animation: fadeInUp 0.4s ease;
 }
 
+/* 봇 감지 경고 */
+.scratch-bot-warning {
+  text-align: center;
+  margin-top: 20px;
+  padding: 20px;
+  background: #FFF0F0;
+  border-radius: 12px;
+  border: 1px solid #FF4757;
+}
+.scratch-bot-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+.scratch-bot-text {
+  font-size: 15px;
+  font-weight: 700;
+  color: #FF4757;
+  margin-bottom: 4px;
+}
+.scratch-bot-sub {
+  font-size: 13px;
+  color: #999;
+  margin-bottom: 16px;
+}
+.scratch-bot-btn {
+  padding: 10px 32px;
+  border: none;
+  border-radius: 8px;
+  background: #FF4757;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+[data-theme="dark"] .scratch-bot-warning {
+  background: #2A1A1A;
+  border-color: #FF4757;
+}
+[data-theme="dark"] .scratch-bot-text {
+  color: #FF6B7A;
+}
+
 /* ==================== 퀴즈 모달 (QuizModal) ==================== */
 
 .quiz-overlay {

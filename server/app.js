@@ -22,6 +22,7 @@ const businessRouter = require('./routes/business')
 const adminRouter = require('./routes/admin')
 const withdrawalRouter = require('./routes/withdrawal')
 const inquiryRouter = require('./routes/inquiry')
+const securityRouter = require('./routes/security')
 
 const app = express()
 
@@ -74,6 +75,8 @@ app.use('/api/business', businessRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api', withdrawalRouter)
 app.use('/api', inquiryRouter)
+app.use('/api/security', securityRouter)
+app.use('/api', securityRouter)
 
 // 만료 전단지 자동 삭제 (Vercel Cron)
 app.get('/api/cron/cleanup', async (req, res) => {

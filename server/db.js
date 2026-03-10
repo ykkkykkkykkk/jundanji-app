@@ -169,6 +169,26 @@ const schemaSQL = `
     answer      TEXT,
     created_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     answered_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS device_fingerprints (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    fingerprint     TEXT NOT NULL,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    UNIQUE(fingerprint, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS scratch_sessions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    token       TEXT NOT NULL UNIQUE,
+    user_id     INTEGER NOT NULL,
+    flyer_id    INTEGER NOT NULL,
+    started_at  TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    completed_at TEXT,
+    duration_ms INTEGER,
+    is_valid    INTEGER NOT NULL DEFAULT 1,
+    UNIQUE(user_id, flyer_id)
   )
 `
 
@@ -187,6 +207,8 @@ const migrations = [
   `ALTER TABLE flyers ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'`,
   `ALTER TABLE users ADD COLUMN point_budget INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE flyers ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN phone TEXT`,
+  `ALTER TABLE users ADD COLUMN device_fingerprint TEXT`,
 ]
 
 // ==================== 시드 데이터 ====================
