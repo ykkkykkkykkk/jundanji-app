@@ -100,6 +100,13 @@ export default function App() {
     ]).then(([pointData, historyData, bookmarkData, quizData, visitData]) => {
       setPoints(pointData.points)
       setNickname(auth?.nickname ?? pointData.nickname ?? '홍길동')
+      if (pointData.role && auth) {
+        const serverRole = pointData.role
+        if (serverRole !== auth.role) {
+          setAuth(prev => prev ? { ...prev, role: serverRole } : prev)
+          localStorage.setItem('role', serverRole)
+        }
+      }
       setShareHistory(historyData)
       setSharedFlyerIds(new Set(historyData.map(h => h.flyerId)))
       setBookmarkedFlyers(bookmarkData)

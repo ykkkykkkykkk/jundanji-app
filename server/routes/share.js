@@ -111,12 +111,12 @@ router.get('/users/:userId/points', async (req, res) => {
   const { userId } = req.params
 
   await db.ensureUser(userId)
-  const user = await db.prepare('SELECT id, nickname, points FROM users WHERE id = ?').get(userId)
+  const user = await db.prepare('SELECT id, nickname, points, role FROM users WHERE id = ?').get(userId)
   if (!user) {
-    return res.json({ ok: true, data: { points: 0, nickname: '홍길동' } })
+    return res.json({ ok: true, data: { points: 0, nickname: '홍길동', role: 'user' } })
   }
 
-  res.json({ ok: true, data: { points: user.points, nickname: user.nickname } })
+  res.json({ ok: true, data: { points: user.points, nickname: user.nickname, role: user.role || 'user' } })
 })
 
 // 유저 공유 내역 조회
