@@ -205,7 +205,7 @@ router.get('/gift-orders', requireAdmin, async (req, res) => {
   const total = totalRow.count
 
   const orders = await db.prepare(`
-    SELECT g.*, u.nickname, u.email, u.provider
+    SELECT g.*, u.nickname, u.email, u.provider, u.provider_id
     FROM gift_orders g
     JOIN users u ON g.user_id = u.id
     ${where}

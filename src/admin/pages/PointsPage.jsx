@@ -83,7 +83,7 @@ export default function PointsPage() {
                 <td className="px-4 py-3">
                   <div className="font-medium text-gray-800">{o.nickname}</div>
                   <div className="text-gray-400 text-xs">{o.email || '-'}</div>
-                  {o.provider && <div className="text-xs mt-0.5" style={{ color: o.provider === 'kakao' ? '#3A1D1D' : '#4285F4' }}>{o.provider === 'kakao' ? '🟡 카카오' : '🔵 구글'}</div>}
+                  {o.provider && <div className="text-xs mt-0.5" style={{ color: o.provider === 'kakao' ? '#3A1D1D' : '#4285F4' }}>{o.provider === 'kakao' ? '🟡 카카오' : '🔵 구글'}{o.provider_id ? ` (${o.provider_id})` : ''}</div>}
                 </td>
                 <td className="px-4 py-3 text-gray-700">{o.gift_name}</td>
                 <td className="px-4 py-3 font-bold text-brand">{o.amount.toLocaleString()}P</td>
