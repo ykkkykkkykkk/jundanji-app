@@ -154,6 +154,39 @@ router.patch('/users/:id/status', requireAdmin, async (req, res) => {
   res.json({ ok: true, message: `유저 상태가 '${status}'로 변경되었습니다.` })
 })
 
+// ======================== 포인트 관리 (관리자) ========================
+
+router.post('/users/:id/points', requireAdmin, async (req, res) => {
+  const { id } = req.params
+  const { amount, description } = req.body
+
+  if (!amount || typeof amount !== 'number' || amount === 0) {
+    return res.status(400).json({ ok: false, message: 'amount(숫자)는 필수입니다.' })
+  }
+
+  const user = await db.prepare('SELECT id, nickname, points FROM users WHERE id = ?').get(id)
+  if (!user) {
+    return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
+  }
+
+  const type = amount > 0 ? 'earn' : 'use'
+  const absAmount = Math.abs(amount)
+  const desc = description || (amount > 0 ? '관리자 포인트 지급' : '관리자 포인트 차감')
+
+  try {
+    await db.batch([
+      { sql: 'UPDATE users SET points = points + ? WHERE id = ?', args: [amount, id] },
+      { sql: 'INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)', args: [id, absAmount, type, desc] },
+    ])
+
+    const updated = await db.prepare('SELECT points FROM users WHERE id = ?').get(id)
+    res.json({ ok: true, message: `${user.nickname}에게 ${amount}P 처리 완료`, points: updated.points })
+  } catch (err) {
+    console.error('[포인트 관리 오류]', err.message)
+    return res.status(500).json({ ok: false, message: '처리 중 오류가 발생했습니다.' })
+  }
+})
+
 // ======================== 기프티콘 관리 ========================
 
 router.get('/gift-orders', requireAdmin, async (req, res) => {
