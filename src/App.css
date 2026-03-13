@@ -2252,20 +2252,19 @@ body {
 }
 
 .guest-scratch-title {
-  font-family: 'Dongle', sans-serif;
-  font-size: 36px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
   color: var(--text-primary);
   margin-bottom: 8px;
+  letter-spacing: -0.5px;
 }
 
 .guest-scratch-desc {
-  font-family: 'Dongle', sans-serif;
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 24px;
-  line-height: 1.4;
+  margin-bottom: 28px;
+  line-height: 1.5;
 }
 
 .guest-scratch-kakao-btn {
@@ -2274,16 +2273,16 @@ body {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  padding: 14px;
+  padding: 15px;
   border: none;
   border-radius: 12px;
   background: #FEE500;
   color: #3A1D1D;
-  font-family: 'Dongle', sans-serif;
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.15s;
+  letter-spacing: -0.3px;
 }
 
 .guest-scratch-kakao-btn:active {
@@ -2292,9 +2291,8 @@ body {
 
 .guest-scratch-dismiss {
   margin-top: 16px;
-  font-family: 'Dongle', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-tertiary, #999);
   cursor: pointer;
   padding: 8px;
