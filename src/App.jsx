@@ -211,16 +211,34 @@ export default function App() {
     return () => { document.body.style.overflow = '' }
   }, [showScratchCard])
 
+  // 비로그인 2회차: 긁기 없이 로그인 유도 모달
+  const [showGuestBlock, setShowGuestBlock] = useState(false)
+  const [guestBlockFlyer, setGuestBlockFlyer] = useState(null)
+
   const handleFlyerClick = (flyer) => {
-    // 비로그인 + 이미 맛보기 사용한 경우 → 바로 로그인 유도
+    // 비로그인 + 이미 맛보기 사용한 경우 → 로그인 유도 모달
     if (!auth && localStorage.getItem('guest_scratched') === 'true') {
-      localStorage.setItem('pendingFlyerId', String(flyer.id))
-      setShowLogin(true)
+      setGuestBlockFlyer(flyer)
+      setShowGuestBlock(true)
       return
     }
     scrollPosRef.current = window.scrollY
     setScratchFlyer(flyer)
     setShowScratchCard(true)
+  }
+
+  const handleGuestBlockLogin = () => {
+    if (guestBlockFlyer) {
+      localStorage.setItem('pendingFlyerId', String(guestBlockFlyer.id))
+    }
+    setShowGuestBlock(false)
+    setGuestBlockFlyer(null)
+    setShowLogin(true)
+  }
+
+  const handleGuestBlockDismiss = () => {
+    setShowGuestBlock(false)
+    setGuestBlockFlyer(null)
   }
 
   const [lastScratchToken, setLastScratchToken] = useState(null)
@@ -386,6 +404,27 @@ export default function App() {
           <PointAnimation points={earnedPoints} onClose={() => setShowPointAnim(false)} />
         )}
       </Suspense>
+
+      {showGuestBlock && (
+        <div className="guest-scratch-modal-overlay" onClick={handleGuestBlockDismiss}>
+          <div className="guest-scratch-modal" onClick={e => e.stopPropagation()}>
+            <div className="guest-scratch-emoji">🔒</div>
+            <div className="guest-scratch-title">로그인이 필요해요</div>
+            <div className="guest-scratch-desc">
+              로그인하면 전단지를 보고<br />포인트도 적립할 수 있어요!
+            </div>
+            <button className="guest-scratch-kakao-btn" onClick={handleGuestBlockLogin}>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M9 1.5C4.86 1.5 1.5 4.14 1.5 7.38c0 2.07 1.38 3.9 3.48 4.95l-.87 3.24c-.06.21.18.39.36.27L8.43 13.5c.18.03.36.03.57.03 4.14 0 7.5-2.64 7.5-5.88C16.5 4.14 13.14 1.5 9 1.5z" fill="#3A1D1D"/>
+              </svg>
+              카카오로 시작하기
+            </button>
+            <div className="guest-scratch-dismiss" onClick={handleGuestBlockDismiss}>
+              다음에 하기
+            </div>
+          </div>
+        </div>
+      )}
 
       {showRoleSelection && (
         <div className="role-selection-overlay">
