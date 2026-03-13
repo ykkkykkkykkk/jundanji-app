@@ -496,20 +496,45 @@ export default function App() {
       )}
 
       {showGuestBlock && (
-        <div className="guest-scratch-modal-overlay" onClick={handleGuestBlockDismiss}>
-          <div className="guest-scratch-modal" onClick={e => e.stopPropagation()}>
-            <div className="guest-scratch-emoji">🔒</div>
-            <div className="guest-scratch-title">로그인이 필요해요</div>
-            <div className="guest-scratch-desc">
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={handleGuestBlockDismiss}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: '24px', padding: '36px 28px 28px',
+              textAlign: 'center', width: '300px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: '64px', lineHeight: 1, marginBottom: '12px' }}>🔒</div>
+            <div style={{ fontSize: '24px', fontWeight: 800, marginBottom: '8px' }}>로그인이 필요해요</div>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: '#666', marginBottom: '28px', lineHeight: 1.5 }}>
               로그인하면 전단지를 보고<br />포인트도 적립할 수 있어요!
             </div>
-            <button className="guest-scratch-kakao-btn" onClick={handleGuestBlockLogin}>
+            <button
+              onClick={handleGuestBlockLogin}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                width: '100%', padding: '15px', border: 'none', borderRadius: '12px',
+                background: '#FEE500', color: '#3A1D1D',
+                fontSize: '16px', fontWeight: 700, cursor: 'pointer',
+              }}
+            >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M9 1.5C4.86 1.5 1.5 4.14 1.5 7.38c0 2.07 1.38 3.9 3.48 4.95l-.87 3.24c-.06.21.18.39.36.27L8.43 13.5c.18.03.36.03.57.03 4.14 0 7.5-2.64 7.5-5.88C16.5 4.14 13.14 1.5 9 1.5z" fill="#3A1D1D"/>
               </svg>
               카카오로 시작하기
             </button>
-            <div className="guest-scratch-dismiss" onClick={handleGuestBlockDismiss}>
+            <div
+              onClick={handleGuestBlockDismiss}
+              style={{ marginTop: '16px', fontSize: '13px', fontWeight: 500, color: '#999', cursor: 'pointer', padding: '8px' }}
+            >
               다음에 하기
             </div>
           </div>
