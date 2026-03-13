@@ -216,8 +216,12 @@ export default function App() {
   const [guestBlockFlyer, setGuestBlockFlyer] = useState(null)
 
   const handleFlyerClick = (flyer) => {
+    const isGuest = !auth
+    const alreadyScratched = localStorage.getItem('guest_scratched') === 'true'
+    alert(`[DEBUG] isGuest=${isGuest}, alreadyScratched=${alreadyScratched}, flyerId=${flyer?.id}`)
+
     // 비로그인 + 이미 맛보기 사용한 경우 → 로그인 유도 모달
-    if (!auth && localStorage.getItem('guest_scratched') === 'true') {
+    if (isGuest && alreadyScratched) {
       setGuestBlockFlyer(flyer)
       setShowGuestBlock(true)
       return
