@@ -126,10 +126,13 @@ export default function App() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('nickname')
-    localStorage.removeItem('role')
+    // localStorage 완전 초기화 (darkMode만 보존)
+    const savedDarkMode = localStorage.getItem('darkMode')
+    localStorage.clear()
+    if (savedDarkMode) localStorage.setItem('darkMode', savedDarkMode)
+    // sessionStorage 초기화
+    sessionStorage.clear()
+    // 유저 상태 초기화
     setAuth(null)
     setNickname('홍길동')
     setPoints(0)

@@ -95,6 +95,14 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
       {/* 프로필 카드 */}
       <div className="profile-section">
         <div className="profile-card">
+          {!isLoggedIn ? (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div className="profile-avatar" style={{ margin: '0 auto 12px' }}>😊</div>
+              <div className="profile-name" style={{ marginBottom: 8 }}>로그인이 필요합니다</div>
+              <button className="login-nudge-btn" onClick={onLoginClick}>로그인 / 회원가입</button>
+            </div>
+          ) : (
+          <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div className="profile-info">
               <div className="profile-avatar">😊</div>
@@ -115,9 +123,7 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div className="profile-name">{nickname}님</div>
-                    {isLoggedIn && (
-                      <button className="nick-edit-btn" onClick={() => { setNickInput(nickname); setEditingNick(true) }}>✏️</button>
-                    )}
+                    <button className="nick-edit-btn" onClick={() => { setNickInput(nickname); setEditingNick(true) }}>✏️</button>
                   </div>
                 )}
                 <span className="profile-badge">
@@ -148,6 +154,8 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
               <span className="stat-label">방문 포인트</span>
             </div>
           </div>
+        </>
+          )}
         </div>
       </div>
 
