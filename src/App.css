@@ -3863,3 +3863,55 @@ body {
   line-height: 1.4;
   margin-bottom: 20px;
 }
+
+/* MyPage 비로그인 잠금 오버레이 */
+.mypage-locked-section {
+  position: relative;
+  filter: blur(3px);
+  pointer-events: none;
+  user-select: none;
+  min-height: 120px;
+}
+
+.mypage-locked-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: auto;
+  cursor: pointer;
+  border-radius: 16px;
+}
+
+.mypage-locked-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] .mypage-locked-content {
+  background: rgba(30, 30, 30, 0.85);
+}
+
+.mypage-locked-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.mypage-locked-text {
+  font-family: 'Dongle', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
