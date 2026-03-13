@@ -7,15 +7,42 @@ const columns = [
   { key: 'user', label: '유저 (카카오계정)' },
   { key: 'gift', label: '기프티콘' },
   { key: 'amount', label: '포인트', width: '100px' },
+  { key: 'phone', label: '전화번호', width: '150px' },
   { key: 'created_at', label: '신청일', width: '160px' },
   { key: 'status', label: '상태', width: '90px' },
-  { key: 'actions', label: '액션', width: '160px' },
+  { key: 'actions', label: '액션', width: '220px' },
 ]
 
 const statusMap = {
   pending: { label: '대기', variant: 'yellow' },
   sent: { label: '발송완료', variant: 'green' },
   failed: { label: '실패', variant: 'red' },
+}
+
+function maskPhone(phone) {
+  if (!phone) return '-'
+  const parts = phone.split('-')
+  if (parts.length === 3) return `${parts[0]}-****-${parts[2]}`
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1-****-$2')
+}
+
+function PhoneCell({ phone }) {
+  const [visible, setVisible] = useState(false)
+  if (!phone) return <span className="text-gray-400">-</span>
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-sm text-gray-700 font-mono">
+        {visible ? phone : maskPhone(phone)}
+      </span>
+      <button
+        onClick={() => setVisible(v => !v)}
+        className="text-gray-400 hover:text-gray-600 transition-colors p-0.5"
+        title={visible ? '숨기기' : '전체 보기'}
+      >
+        {visible ? '🙈' : '👁️'}
+      </button>
+    </div>
+  )
 }
 
 export default function PointsPage() {
@@ -53,7 +80,17 @@ export default function PointsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">기프티콘 관리</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">기프티콘 관리</h1>
+        <a
+          href="https://www.giftielbiz.co.kr/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-500 text-white text-sm font-semibold rounded-lg hover:bg-indigo-600 transition-colors"
+        >
+          🎁 기프티쇼 바로가기 ↗
+        </a>
+      </div>
 
       {/* 필터 */}
       <div className="flex flex-wrap gap-3 mb-4">
@@ -87,6 +124,9 @@ export default function PointsPage() {
                 </td>
                 <td className="px-4 py-3 text-gray-700">{o.gift_name}</td>
                 <td className="px-4 py-3 font-bold text-brand">{o.amount.toLocaleString()}P</td>
+                <td className="px-4 py-3">
+                  <PhoneCell phone={o.phone} />
+                </td>
                 <td className="px-4 py-3 text-gray-400 text-xs">{o.created_at}</td>
                 <td className="px-4 py-3">
                   <Badge variant={statusMap[o.status]?.variant}>

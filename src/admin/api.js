@@ -15,6 +15,11 @@ async function request(url, options = {}) {
     },
   })
   const data = await res.json()
+  if (res.status === 401) {
+    sessionStorage.removeItem('admin_token')
+    window.location.reload()
+    throw new Error('세션 만료 - 다시 로그인합니다.')
+  }
   if (!res.ok) throw new Error(data.message || '요청 실패')
   return data
 }

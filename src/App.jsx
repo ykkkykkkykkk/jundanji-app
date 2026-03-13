@@ -69,7 +69,7 @@ export default function App() {
   const [visitHistory, setVisitHistory] = useState([])
   const [showPointAnim, setShowPointAnim] = useState(false)
   const [earnedPoints, setEarnedPoints] = useState(0)
-  const [sharedFlyerIds] = useState(new Set())
+  const [sharedFlyerIds, setSharedFlyerIds] = useState(new Set())
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set())
   const [bookmarkedFlyers, setBookmarkedFlyers] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)

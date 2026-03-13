@@ -3648,121 +3648,197 @@ body {
   color: #1A1A1A;
 }
 
-/* 확인 모달 */
-.gshop-modal-overlay {
+/* 바텀시트 모달 */
+.gshop-bs-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.5);
   z-index: 500;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 20px;
+  animation: gshop-bs-fade-in 0.2s ease-out;
 }
 
-.gshop-modal {
+@keyframes gshop-bs-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.gshop-bs {
   background: var(--bg-card);
-  border-radius: 24px;
-  padding: 32px 24px 24px;
+  border-radius: 24px 24px 0 0;
+  padding: 12px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
   width: 100%;
-  max-width: 340px;
-  text-align: center;
-  animation: gshop-modal-in 0.25s ease-out;
+  max-width: 430px;
+  animation: gshop-bs-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes gshop-modal-in {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+@keyframes gshop-bs-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
-.gshop-modal-emoji {
-  font-size: 56px;
+.gshop-bs-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--text-muted);
+  opacity: 0.3;
+  margin: 0 auto 18px;
+}
+
+/* 상품 정보 행 */
+.gshop-bs-product {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-input);
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+.gshop-bs-product-emoji {
+  font-size: 40px;
   line-height: 1;
+  flex-shrink: 0;
+}
+
+.gshop-bs-product-detail {
+  flex: 1;
+  min-width: 0;
+}
+
+.gshop-bs-product-brand {
+  font-family: 'Dongle', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #FF6B00;
+  line-height: 1.2;
+}
+
+.gshop-bs-product-name {
+  font-family: 'Dongle', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.gshop-bs-product-points {
+  font-family: 'Dongle', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #FF6B00;
+  flex-shrink: 0;
+}
+
+/* 전화번호 입력 */
+.gshop-bs-field {
+  margin-bottom: 16px;
+}
+
+.gshop-bs-label {
+  display: block;
+  font-family: 'Dongle', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.gshop-bs-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--border-color, #e0e0e0);
+  border-radius: 14px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: 'Dongle', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  letter-spacing: 1px;
+}
+
+.gshop-bs-input:focus {
+  border-color: #FF6B00;
+}
+
+.gshop-bs-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* 안내문 */
+.gshop-bs-notice {
+  font-family: 'Dongle', sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  background: var(--bg-input);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+/* 잔여 포인트 */
+.gshop-bs-balance {
+  font-family: 'Dongle', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.gshop-bs-balance strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+/* 에러 */
+.gshop-bs-error {
+  font-family: 'Dongle', sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: #e53935;
+  text-align: center;
   margin-bottom: 12px;
 }
 
-.gshop-modal-brand {
-  font-size: 15px;
-  font-weight: 700;
-  color: #FF6B00;
-  margin-bottom: 2px;
-}
-
-.gshop-modal-name {
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-}
-
-.gshop-modal-points {
-  font-size: 28px;
-  font-weight: 900;
-  color: #FF6B00;
-  margin-bottom: 20px;
-}
-
-.gshop-modal-info {
-  background: var(--bg-input);
-  border-radius: 14px;
-  padding: 14px 16px;
-  margin-bottom: 14px;
-  text-align: left;
-}
-
-.gshop-modal-info-row {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  padding: 4px 0;
-}
-
-.gshop-modal-balance {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 20px;
-}
-.gshop-modal-balance strong {
-  color: var(--text-primary);
-  font-weight: 800;
-}
-
-.gshop-modal-confirm-btn {
+/* 교환 신청 버튼 */
+.gshop-bs-submit {
   width: 100%;
   padding: 16px;
   border: none;
   border-radius: 14px;
-  background: #FEE500;
-  color: #1A1A1A;
-  font-size: 17px;
-  font-weight: 800;
+  background: #FF6B00;
+  color: #fff;
+  font-family: 'Dongle', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.1s;
-  margin-bottom: 8px;
+  transition: transform 0.1s, opacity 0.2s;
 }
-.gshop-modal-confirm-btn:active {
+
+.gshop-bs-submit:active {
   transform: scale(0.97);
 }
-.gshop-modal-confirm-btn:disabled {
-  opacity: 0.6;
+
+.gshop-bs-submit:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.gshop-modal-cancel-btn {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 14px;
-  background: none;
-  color: var(--text-muted);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* 완료 팝업 */
-.gshop-modal-complete {
-  padding-top: 40px;
+/* 완료 화면 */
+.gshop-bs-complete {
+  text-align: center;
+  padding-top: 20px;
 }
 
 .gshop-complete-emoji {
@@ -3772,15 +3848,18 @@ body {
 }
 
 .gshop-complete-title {
-  font-size: 22px;
-  font-weight: 900;
+  font-family: 'Dongle', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .gshop-complete-desc {
-  font-size: 15px;
+  font-family: 'Dongle', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
   color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 28px;
+  line-height: 1.4;
+  margin-bottom: 20px;
 }

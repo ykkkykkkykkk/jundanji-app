@@ -341,6 +341,22 @@ export async function getGiftOrders(userId) {
   return fetchJSON(`${BASE}/users/${userId}/gift-orders`)
 }
 
+// ======== 교환 신청 API ========
+
+export async function createExchangeRequest(token, { product_name, product_emoji, points, phone }) {
+  const res = await fetch(`${BASE}/exchange/request`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ product_name, product_emoji, points, phone }),
+  })
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.message || '서버 오류')
+  return data
+}
+
 // ======== 보안 API ========
 
 // 기기 fingerprint 생성

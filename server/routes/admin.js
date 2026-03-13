@@ -235,16 +235,20 @@ router.patch('/gift-orders/:id/status', requireAdmin, async (req, res) => {
     // 실패 시 포인트 환불
     try {
       await db.batch([
-        { sql: 'UPDATE gift_orders SET status = ?, sent_at = ? WHERE id = ?', args: [status, now, id] },
+        { sql: 'UPDATE gift_orders SET status = ?, sent_at = ?, phone = NULL WHERE id = ?', args: [status, now, id] },
         { sql: 'UPDATE users SET points = points + ? WHERE id = ?', args: [order.amount, order.user_id] },
         { sql: "INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, 'earn', '기프티콘 발송 실패 환불')", args: [order.user_id, order.amount] },
+        { sql: 'UPDATE exchange_requests SET phone = NULL WHERE user_id = CAST(? AS TEXT) AND points = ? AND phone IS NOT NULL', args: [order.user_id, order.amount] },
       ])
     } catch (err) {
       console.error('[기프티콘 환불 오류]', err.message)
       return res.status(500).json({ ok: false, message: '처리 중 오류가 발생했습니다.' })
     }
   } else {
-    await db.prepare('UPDATE gift_orders SET status = ?, sent_at = ? WHERE id = ?').run(status, now, id)
+    // 발송완료 시 전화번호 삭제 (개인정보 보호)
+    await db.prepare('UPDATE gift_orders SET status = ?, sent_at = ?, phone = NULL WHERE id = ?').run(status, now, id)
+    // exchange_requests 테이블에서도 전화번호 삭제
+    await db.prepare('UPDATE exchange_requests SET phone = NULL WHERE user_id = CAST(? AS TEXT) AND points = ? AND phone IS NOT NULL').run(order.user_id, order.amount)
   }
 
   res.json({ ok: true, message: `기프티콘 주문이 '${status === 'sent' ? '발송완료' : '실패'}'로 처리되었습니다.` })

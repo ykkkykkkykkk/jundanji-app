@@ -188,6 +188,19 @@ const schemaSQL = `
     duration_ms INTEGER,
     is_valid    INTEGER NOT NULL DEFAULT 1,
     UNIQUE(user_id, flyer_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS exchange_requests (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     TEXT NOT NULL,
+    user_kakao_id TEXT,
+    product_name TEXT NOT NULL,
+    product_emoji TEXT,
+    points      INTEGER NOT NULL,
+    phone       TEXT,
+    status      TEXT DEFAULT 'pending',
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    sent_at     DATETIME
   )
 `
 
@@ -208,6 +221,7 @@ const migrations = [
   `ALTER TABLE flyers ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN phone TEXT`,
   `ALTER TABLE users ADD COLUMN device_fingerprint TEXT`,
+  `ALTER TABLE gift_orders ADD COLUMN phone TEXT`,
 ]
 
 // ==================== 시드 데이터 ====================
