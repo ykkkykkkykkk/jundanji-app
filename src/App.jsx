@@ -17,6 +17,75 @@ const ScratchCard = lazy(() => import('./components/ScratchCard'))
 
 const GUEST_USER_ID = 1  // 게스트 사용자
 
+// PWA 설치 배너 컴포넌트
+function InstallBanner() {
+  const [show, setShow] = useState(false)
+  const [prompt, setPrompt] = useState(null)
+
+  useEffect(() => {
+    // 이미 설치됨 or 이미 닫음
+    if (window.matchMedia('(display-mode: standalone)').matches) return
+    if (sessionStorage.getItem('pwa-banner-dismissed')) return
+
+    const handler = () => {
+      setPrompt(window.__pwaInstallPrompt)
+      setShow(true)
+    }
+    // 이미 저장된 프롬프트가 있으면 바로 표시
+    if (window.__pwaInstallPrompt) handler()
+    window.addEventListener('pwa-install-ready', handler)
+    return () => window.removeEventListener('pwa-install-ready', handler)
+  }, [])
+
+  if (!show) return null
+
+  const handleInstall = async () => {
+    if (!prompt) return
+    prompt.prompt()
+    const result = await prompt.userChoice
+    if (result.outcome === 'accepted') {
+      setShow(false)
+    }
+    window.__pwaInstallPrompt = null
+  }
+
+  const handleDismiss = () => {
+    setShow(false)
+    sessionStorage.setItem('pwa-banner-dismissed', 'true')
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 72, left: 12, right: 12, zIndex: 900,
+      background: '#FF6B00', borderRadius: 16, padding: '14px 16px',
+      display: 'flex', alignItems: 'center', gap: 12,
+      boxShadow: '0 4px 20px rgba(255,107,0,0.35)',
+      animation: 'fadeInUp 0.4s ease',
+    }}>
+      <div style={{ fontSize: 28 }}>📲</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>홈 화면에 추가</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>앱처럼 빠르게 열어보세요!</div>
+      </div>
+      <button
+        onClick={handleInstall}
+        style={{
+          padding: '8px 16px', border: 'none', borderRadius: 10,
+          background: '#fff', color: '#FF6B00', fontSize: 14, fontWeight: 700,
+          cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
+      >설치</button>
+      <button
+        onClick={handleDismiss}
+        style={{
+          background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)',
+          fontSize: 18, cursor: 'pointer', padding: '4px 2px', lineHeight: 1,
+        }}
+      >✕</button>
+    </div>
+  )
+}
+
 function loadDarkMode() {
   return localStorage.getItem('darkMode') === 'true'
 }
@@ -540,6 +609,8 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <InstallBanner />
 
       {showRoleSelection && (
         <div className="role-selection-overlay">
