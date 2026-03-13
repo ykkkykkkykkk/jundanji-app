@@ -127,7 +127,7 @@ router.get('/', async (req, res) => {
     qrPoint: row.qr_point || 0,
     ownerId: row.owner_id || null,
     qrCode: row.qr_code || null,
-    items: JSON.parse(row.items),
+    items: JSON.parse(row.items).filter(i => i.name !== null),
   }))
 
   res.json({
@@ -302,7 +302,7 @@ router.put('/:id', upload.single('image'), async (req, res) => {
       category=?, title=?, subtitle=?, valid_from=?, valid_until=?, share_point=?, tags=?, image_url=?, qr_point=?
       WHERE id=?
     `).run(storeName, storeEmoji, storeColor, storeBgColor, category, title, subtitle,
-           validFrom, validUntil, Number(sharePoint), JSON.stringify(parsedTags), imageUrl, Number(qrPoint) || 0, id)
+           validFrom, validUntil, Number(sharePoint) || 10, JSON.stringify(parsedTags), imageUrl, Number(qrPoint) || 0, id)
 
     if (parsedItems.length) {
       await txDb.prepare('DELETE FROM flyer_items WHERE flyer_id = ?').run(id)

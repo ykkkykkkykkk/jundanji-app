@@ -110,8 +110,7 @@ router.post('/share', async (req, res) => {
 router.get('/users/:userId/points', async (req, res) => {
   const { userId } = req.params
 
-  await db.ensureUser(userId)
-  const user = await db.prepare('SELECT id, nickname, points, role FROM users WHERE id = ?').get(userId)
+  const user = await db.prepare('SELECT id, nickname, points, role FROM users WHERE id = ?').get(Number(userId))
   if (!user) {
     return res.json({ ok: true, data: { points: 0, nickname: '홍길동', role: 'user' } })
   }

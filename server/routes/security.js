@@ -94,9 +94,9 @@ router.post('/scratch/complete', async (req, res) => {
     return res.status(409).json({ ok: false, message: '이미 완료된 세션입니다.' })
   }
 
-  // 서버 시간 기반 duration 검증
-  const serverStartTime = new Date(session.started_at).getTime()
-  const serverDuration = Date.now() - serverStartTime
+  // 서버 시간 기반 duration 검증 (SQLite datetime 포맷 호환)
+  const serverStartTime = new Date(session.started_at.replace(' ', 'T') + '+09:00').getTime()
+  const serverDuration = Number.isNaN(serverStartTime) ? Infinity : Date.now() - serverStartTime
   const clientDuration = Number(durationMs) || 0
 
   // 클라이언트 보고 시간과 서버 시간 중 짧은 쪽 기준

@@ -92,9 +92,9 @@ export default function App() {
   // 유저 데이터 로드
   useEffect(() => {
     Promise.all([
-      getUserPoints(userId),
-      getUserShareHistory(userId),
-      getUserBookmarks(userId),
+      getUserPoints(userId).catch(() => ({ points: 0, nickname: '홍길동', role: 'user' })),
+      getUserShareHistory(userId).catch(() => []),
+      getUserBookmarks(userId).catch(() => []),
       getQuizHistory(userId).catch(() => []),
       getVisitHistory(userId).catch(() => []),
     ]).then(([pointData, historyData, bookmarkData, quizData, visitData]) => {

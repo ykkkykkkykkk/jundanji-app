@@ -42,8 +42,8 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
   const totalUsers = totalUsersRow.count
   const totalFlyersRow = await db.prepare('SELECT COUNT(*) as count FROM flyers').get()
   const totalFlyers = totalFlyersRow.count
-  const totalPointsRow = await db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM point_transactions WHERE type = ?').get('earn')
-  const totalPoints = totalPointsRow.total
+  const totalPointsRow = await db.prepare('SELECT COALESCE(SUM(points), 0) as total FROM users').get()
+  const totalPoints = totalPointsRow?.total || 0
   const totalScratchesRow = await db.prepare('SELECT COUNT(*) as count FROM share_history').get()
   const totalScratches = totalScratchesRow.count
 
@@ -238,7 +238,7 @@ router.patch('/gift-orders/:id/status', requireAdmin, async (req, res) => {
         { sql: 'UPDATE gift_orders SET status = ?, sent_at = ?, phone = NULL WHERE id = ?', args: [status, now, id] },
         { sql: 'UPDATE users SET points = points + ? WHERE id = ?', args: [order.amount, order.user_id] },
         { sql: "INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, 'earn', '기프티콘 발송 실패 환불')", args: [order.user_id, order.amount] },
-        { sql: 'UPDATE exchange_requests SET phone = NULL WHERE user_id = CAST(? AS TEXT) AND points = ? AND phone IS NOT NULL', args: [order.user_id, order.amount] },
+        { sql: "UPDATE exchange_requests SET phone = NULL, status = 'failed' WHERE user_id = CAST(? AS TEXT) AND points = ? AND phone IS NOT NULL", args: [order.user_id, order.amount] },
       ])
     } catch (err) {
       console.error('[기프티콘 환불 오류]', err.message)
@@ -247,8 +247,8 @@ router.patch('/gift-orders/:id/status', requireAdmin, async (req, res) => {
   } else {
     // 발송완료 시 전화번호 삭제 (개인정보 보호)
     await db.prepare('UPDATE gift_orders SET status = ?, sent_at = ?, phone = NULL WHERE id = ?').run(status, now, id)
-    // exchange_requests 테이블에서도 전화번호 삭제
-    await db.prepare('UPDATE exchange_requests SET phone = NULL WHERE user_id = CAST(? AS TEXT) AND points = ? AND phone IS NOT NULL').run(order.user_id, order.amount)
+    // exchange_requests 테이블에서도 전화번호 삭제 + 상태 동기화
+    await db.prepare("UPDATE exchange_requests SET phone = NULL, status = 'completed' WHERE user_id = CAST(? AS TEXT) AND points = ? AND phone IS NOT NULL").run(order.user_id, order.amount)
   }
 
   res.json({ ok: true, message: `기프티콘 주문이 '${status === 'sent' ? '발송완료' : '실패'}'로 처리되었습니다.` })
