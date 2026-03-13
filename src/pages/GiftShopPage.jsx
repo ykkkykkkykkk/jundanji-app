@@ -127,8 +127,8 @@ export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick,
       {/* 포인트 배너 */}
       <div className="gshop-point-banner">
         <div className="gshop-point-banner-label">보유 포인트</div>
-        <div className="gshop-point-banner-amount">{points.toLocaleString()}<span className="gshop-point-banner-unit">P</span></div>
-        <div className="gshop-point-banner-sub">포인트로 기프티콘을 교환하세요!</div>
+        <div className="gshop-point-banner-amount">{isLoggedIn ? points.toLocaleString() : '---'}<span className="gshop-point-banner-unit">P</span></div>
+        <div className="gshop-point-banner-sub">{isLoggedIn ? '포인트로 기프티콘을 교환하세요!' : '로그인 후 포인트를 확인하세요'}</div>
       </div>
 
       {/* 카테고리 탭 */}
