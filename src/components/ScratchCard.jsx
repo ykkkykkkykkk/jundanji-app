@@ -5,7 +5,7 @@ const CARD_W = 340
 const CARD_H = 400
 const BRUSH_RADIUS = 28
 const REVEAL_THRESHOLD_LOGIN = 0.80
-const REVEAL_THRESHOLD_GUEST = 0.35
+const REVEAL_THRESHOLD_GUEST = 0.80
 
 function formatPrice(price) {
   if (!price || isNaN(price)) return '0원'
