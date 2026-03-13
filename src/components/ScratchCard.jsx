@@ -5,7 +5,7 @@ const CARD_W = 340
 const CARD_H = 400
 const BRUSH_RADIUS = 28
 const REVEAL_THRESHOLD_LOGIN = 0.80
-const REVEAL_THRESHOLD_GUEST = 0.60
+const REVEAL_THRESHOLD_GUEST = 0.35
 
 function formatPrice(price) {
   if (!price || isNaN(price)) return '0원'
@@ -127,10 +127,11 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
     if (!isLoggedIn) {
       // 게스트: 서버 저장 안 함, App으로 이벤트 전달
       localStorage.setItem('guest_scratched', 'true')
-      setTimeout(() => {
-        if (onGuestReveal) onGuestReveal(flyer)
+      // 은박이 사라지는 애니메이션 후 모달 표시
+      const timer = setTimeout(() => {
+        onGuestReveal && onGuestReveal(flyer)
       }, 800)
-      return
+      return () => clearTimeout(timer)
     }
 
     // 로그인 유저: 서버에 긁기 완료 보고

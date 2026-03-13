@@ -261,10 +261,14 @@ export default function App() {
   const [guestRevealFlyer, setGuestRevealFlyer] = useState(null)
 
   const handleGuestReveal = useCallback((flyer) => {
+    // ScratchCard를 먼저 닫고, 약간의 딜레이 후 모달 표시
     setShowScratchCard(false)
     setScratchFlyer(null)
     setGuestRevealFlyer(flyer)
-    setShowGuestReveal(true)
+    // 즉시 모달 표시
+    requestAnimationFrame(() => {
+      setShowGuestReveal(true)
+    })
   }, [])
 
   const handleGuestRevealLogin = () => {
@@ -431,11 +435,14 @@ export default function App() {
       </Suspense>
 
       {showGuestReveal && (
-        <div className="guest-reveal-overlay">
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
           <div className="confetti-container">
             {Array.from({ length: 40 }, (_, i) => {
               const colors = ['#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF9FF3', '#F368E0', '#FF9F43']
-              const color = colors[i % colors.length]
               return (
                 <div
                   key={i}
@@ -444,28 +451,44 @@ export default function App() {
                     left: `${Math.random() * 100}%`,
                     animationDelay: `${Math.random() * 0.8}s`,
                     animationDuration: `${1.5 + Math.random() * 1.5}s`,
-                    width: 6 + Math.random() * 8,
-                    height: 6 + Math.random() * 8,
-                    backgroundColor: color,
+                    width: `${6 + Math.random() * 8}px`,
+                    height: `${6 + Math.random() * 8}px`,
+                    backgroundColor: colors[i % colors.length],
                     transform: `rotate(${Math.random() * 360}deg)`,
                   }}
                 />
               )
             })}
           </div>
-          <div className="guest-scratch-modal">
-            <div className="guest-scratch-emoji">🎉</div>
-            <div className="guest-scratch-title">당첨됐어요!</div>
-            <div className="guest-scratch-desc">
+          <div style={{
+            background: '#fff', borderRadius: '24px', padding: '36px 28px 28px',
+            textAlign: 'center', width: '300px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            zIndex: 10000, position: 'relative',
+          }}>
+            <div style={{ fontSize: '64px', lineHeight: 1, marginBottom: '12px' }}>🎉</div>
+            <div style={{ fontSize: '24px', fontWeight: 800, marginBottom: '8px', letterSpacing: '-0.5px' }}>당첨됐어요!</div>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: '#666', marginBottom: '28px', lineHeight: 1.5 }}>
               로그인하면 포인트가 실제로 적립돼요!
             </div>
-            <button className="guest-scratch-kakao-btn" onClick={handleGuestRevealLogin}>
+            <button
+              onClick={handleGuestRevealLogin}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                width: '100%', padding: '15px', border: 'none', borderRadius: '12px',
+                background: '#FEE500', color: '#3A1D1D',
+                fontSize: '16px', fontWeight: 700, cursor: 'pointer',
+              }}
+            >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path d="M9 1.5C4.86 1.5 1.5 4.14 1.5 7.38c0 2.07 1.38 3.9 3.48 4.95l-.87 3.24c-.06.21.18.39.36.27L8.43 13.5c.18.03.36.03.57.03 4.14 0 7.5-2.64 7.5-5.88C16.5 4.14 13.14 1.5 9 1.5z" fill="#3A1D1D"/>
               </svg>
               카카오로 시작하기
             </button>
-            <div className="guest-scratch-dismiss" onClick={handleGuestRevealDismiss}>
+            <div
+              onClick={handleGuestRevealDismiss}
+              style={{ marginTop: '16px', fontSize: '13px', fontWeight: 500, color: '#999', cursor: 'pointer', padding: '8px' }}
+            >
               다음에 하기
             </div>
           </div>
