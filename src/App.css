@@ -2163,11 +2163,11 @@ body {
 
 /* Confetti 파티클 */
 .confetti-container {
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 10;
+  z-index: 550;
 }
 
 .confetti-particle {
@@ -2205,12 +2205,13 @@ body {
 
 /* 게스트 로그인 유도 모달 */
 .guest-scratch-modal-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 20;
+  z-index: 600;
+  background: rgba(0, 0, 0, 0.5);
   animation: fadeIn 0.3s ease;
 }
 
