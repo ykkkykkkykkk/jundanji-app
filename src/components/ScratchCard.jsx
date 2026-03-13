@@ -17,48 +17,12 @@ function getDiscountRate(original, sale) {
   return Math.round((1 - sale / original) * 100)
 }
 
-// 파티클(confetti) 컴포넌트
-function ConfettiEffect() {
-  const colors = ['#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF9FF3', '#F368E0', '#FF9F43']
-  const particles = Array.from({ length: 40 }, (_, i) => {
-    const color = colors[i % colors.length]
-    const left = Math.random() * 100
-    const delay = Math.random() * 0.8
-    const duration = 1.5 + Math.random() * 1.5
-    const size = 6 + Math.random() * 8
-    const rotate = Math.random() * 360
-    const type = i % 3 // 0: circle, 1: square, 2: star
-    return { id: i, color, left, delay, duration, size, rotate, type }
-  })
-
-  return (
-    <div className="confetti-container">
-      {particles.map(p => (
-        <div
-          key={p.id}
-          className={`confetti-particle confetti-type-${p.type}`}
-          style={{
-            left: `${p.left}%`,
-            animationDelay: `${p.delay}s`,
-            animationDuration: `${p.duration}s`,
-            width: p.size,
-            height: p.size,
-            backgroundColor: p.color,
-            transform: `rotate(${p.rotate}deg)`,
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
-export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onClose, onLoginClick }) {
+export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onClose, onGuestReveal }) {
   const canvasRef = useRef(null)
   const isDrawing = useRef(false)
   const [revealed, setRevealed] = useState(false)
   const [percentage, setPercentage] = useState(0)
   const [botWarning, setBotWarning] = useState(false)
-  const [showGuestModal, setShowGuestModal] = useState(false)
   const checkInterval = useRef(null)
   const scratchStartTime = useRef(null)
   const sessionTokenRef = useRef(null)
@@ -75,11 +39,11 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
     scratchStartTime.current = Date.now()
   }, [userId, flyer?.id, isLoggedIn])
 
-  // 캔버스에 은박 코팅 그리기 (고정 340x400)
+  // 캔버스에 은박 코팅 그리기
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark'
     const grad = ctx.createLinearGradient(0, 0, CARD_W, CARD_H)
@@ -157,35 +121,36 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
   }, [revealed, threshold])
 
   useEffect(() => {
-    if (revealed) {
-      clearInterval(checkInterval.current)
+    if (!revealed) return
+    clearInterval(checkInterval.current)
 
-      if (!isLoggedIn) {
-        // 게스트: 서버 저장 안 함, confetti + 로그인 모달
-        localStorage.setItem('guest_scratched', 'true')
-        setTimeout(() => setShowGuestModal(true), 600)
-        return
-      }
-
-      // 로그인 유저: 서버에 긁기 완료 보고
-      const durationMs = Date.now() - (scratchStartTime.current || Date.now())
-      if (sessionTokenRef.current) {
-        completeScratchSession(sessionTokenRef.current, durationMs)
-          .then(result => {
-            if (result.botDetected) {
-              setBotWarning(true)
-              return
-            }
-            setTimeout(() => onComplete(flyer, sessionTokenRef.current), 800)
-          })
-          .catch(() => {
-            setTimeout(() => onComplete(flyer, sessionTokenRef.current), 800)
-          })
-      } else {
-        setTimeout(() => onComplete(flyer, null), 800)
-      }
+    if (!isLoggedIn) {
+      // 게스트: 서버 저장 안 함, App으로 이벤트 전달
+      localStorage.setItem('guest_scratched', 'true')
+      setTimeout(() => {
+        if (onGuestReveal) onGuestReveal(flyer)
+      }, 800)
+      return
     }
-  }, [revealed, flyer, onComplete, isLoggedIn])
+
+    // 로그인 유저: 서버에 긁기 완료 보고
+    const durationMs = Date.now() - (scratchStartTime.current || Date.now())
+    if (sessionTokenRef.current) {
+      completeScratchSession(sessionTokenRef.current, durationMs)
+        .then(result => {
+          if (result.botDetected) {
+            setBotWarning(true)
+            return
+          }
+          setTimeout(() => onComplete(flyer, sessionTokenRef.current), 800)
+        })
+        .catch(() => {
+          setTimeout(() => onComplete(flyer, sessionTokenRef.current), 800)
+        })
+    } else {
+      setTimeout(() => onComplete(flyer, null), 800)
+    }
+  }, [revealed, flyer, onComplete, isLoggedIn, onGuestReveal])
 
   const handleStart = (e) => {
     e.preventDefault()
@@ -209,19 +174,6 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
     checkReveal()
   }
 
-  const handleGuestLogin = () => {
-    // 로그인 전에 현재 전단지 정보 저장 (로그인 후 리다이렉트용)
-    localStorage.setItem('pendingFlyerId', String(flyer.id))
-    setShowGuestModal(false)
-    onClose()
-    onLoginClick()
-  }
-
-  const handleGuestDismiss = () => {
-    setShowGuestModal(false)
-    onClose()
-  }
-
   return (
     <div className={`scratch-overlay ${revealed ? 'scratch-revealed' : ''}`}>
       <div className="scratch-container">
@@ -232,12 +184,8 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
         </div>
 
         <div className="scratch-card-inner">
-          {/* 아래 레이어: 전단지 포스터 (고정 340x400) */}
-          <div
-            className="scratch-flyer"
-            style={{ background: flyer.storeBgColor }}
-          >
-            {/* 배경 이미지 or 이모지 — 340x400 전체를 꽉 채움 */}
+          {/* 아래 레이어: 전단지 포스터 */}
+          <div className="scratch-flyer" style={{ background: flyer.storeBgColor }}>
             {flyer.imageUrl ? (
               <img src={flyer.imageUrl} alt={flyer.storeName} className="scratch-flyer-img" loading="lazy" />
             ) : (
@@ -245,8 +193,6 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
                 {flyer.storeEmoji}
               </div>
             )}
-
-            {/* 상단: 가게명 + 포인트 */}
             <div className="scratch-flyer-top">
               <div className="scratch-flyer-store" style={{ background: flyer.storeColor }}>
                 {flyer.storeEmoji} {flyer.storeName}
@@ -255,12 +201,9 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
                 <div className="scratch-flyer-point">+{flyer.sharePoint}P</div>
               )}
             </div>
-
-            {/* 하단: 제목 + 상품 목록 */}
             <div className="scratch-flyer-bottom">
               <div className="scratch-flyer-title">{flyer.title}</div>
               {flyer.subtitle && <div className="scratch-flyer-sub">{flyer.subtitle}</div>}
-
               {flyer.items && flyer.items.length > 0 && (
                 <div className="scratch-flyer-items">
                   {flyer.items.slice(0, 3).map((item, i) => {
@@ -283,7 +226,7 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
             </div>
           </div>
 
-          {/* 위 레이어: 은박 캔버스 (고정 340x400) */}
+          {/* 위 레이어: 은박 캔버스 */}
           <canvas
             ref={canvasRef}
             className={`scratch-canvas ${revealed ? 'scratch-canvas-hide' : ''}`}
@@ -299,32 +242,8 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
           />
         </div>
 
-        {/* 로그인 유저: 긁기 완료 메시지 */}
         {revealed && !botWarning && isLoggedIn && (
           <div className="scratch-complete-msg">전단지가 공개되었습니다!</div>
-        )}
-
-        {/* 게스트: confetti + 로그인 유도 모달 */}
-        {revealed && !isLoggedIn && <ConfettiEffect />}
-        {showGuestModal && (
-          <div className="guest-scratch-modal-overlay">
-            <div className="guest-scratch-modal">
-              <div className="guest-scratch-emoji">🎉</div>
-              <div className="guest-scratch-title">당첨됐어요!</div>
-              <div className="guest-scratch-desc">
-                로그인하면 포인트가 실제로 적립돼요!
-              </div>
-              <button className="guest-scratch-kakao-btn" onClick={handleGuestLogin}>
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <path d="M9 1.5C4.86 1.5 1.5 4.14 1.5 7.38c0 2.07 1.38 3.9 3.48 4.95l-.87 3.24c-.06.21.18.39.36.27L8.43 13.5c.18.03.36.03.57.03 4.14 0 7.5-2.64 7.5-5.88C16.5 4.14 13.14 1.5 9 1.5z" fill="#3A1D1D"/>
-                </svg>
-                카카오로 시작하기
-              </button>
-              <div className="guest-scratch-dismiss" onClick={handleGuestDismiss}>
-                다음에 하기
-              </div>
-            </div>
-          </div>
         )}
 
         {botWarning && (

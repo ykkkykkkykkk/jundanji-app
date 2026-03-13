@@ -2204,6 +2204,24 @@ body {
 }
 
 /* 게스트 로그인 유도 모달 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 게스트 1회차: 긁기 후 당첨 모달 (App 레벨) */
+.guest-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 600;
+  background: rgba(0, 0, 0, 0.6);
+  animation: fadeIn 0.3s ease;
+}
+
+/* 게스트 2회차: 긁기 전 로그인 유도 모달 */
 .guest-scratch-modal-overlay {
   position: fixed;
   inset: 0;

@@ -256,6 +256,31 @@ export default function App() {
     setScratchFlyer(null)
   }
 
+  // 게스트 긁기 완료 → confetti + 로그인 유도 모달
+  const [showGuestReveal, setShowGuestReveal] = useState(false)
+  const [guestRevealFlyer, setGuestRevealFlyer] = useState(null)
+
+  const handleGuestReveal = useCallback((flyer) => {
+    setShowScratchCard(false)
+    setScratchFlyer(null)
+    setGuestRevealFlyer(flyer)
+    setShowGuestReveal(true)
+  }, [])
+
+  const handleGuestRevealLogin = () => {
+    if (guestRevealFlyer) {
+      localStorage.setItem('pendingFlyerId', String(guestRevealFlyer.id))
+    }
+    setShowGuestReveal(false)
+    setGuestRevealFlyer(null)
+    setShowLogin(true)
+  }
+
+  const handleGuestRevealDismiss = () => {
+    setShowGuestReveal(false)
+    setGuestRevealFlyer(null)
+  }
+
   const handleQuizPoints = (earned, total) => {
     setEarnedPoints(earned)
     setShowPointAnim(true)
@@ -396,7 +421,7 @@ export default function App() {
             isLoggedIn={!!auth}
             onComplete={handleScratchComplete}
             onClose={handleScratchClose}
-            onLoginClick={() => setShowLogin(true)}
+            onGuestReveal={handleGuestReveal}
           />
         )}
 
@@ -404,6 +429,48 @@ export default function App() {
           <PointAnimation points={earnedPoints} onClose={() => setShowPointAnim(false)} />
         )}
       </Suspense>
+
+      {showGuestReveal && (
+        <div className="guest-reveal-overlay">
+          <div className="confetti-container">
+            {Array.from({ length: 40 }, (_, i) => {
+              const colors = ['#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF9FF3', '#F368E0', '#FF9F43']
+              const color = colors[i % colors.length]
+              return (
+                <div
+                  key={i}
+                  className={`confetti-particle confetti-type-${i % 3}`}
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 0.8}s`,
+                    animationDuration: `${1.5 + Math.random() * 1.5}s`,
+                    width: 6 + Math.random() * 8,
+                    height: 6 + Math.random() * 8,
+                    backgroundColor: color,
+                    transform: `rotate(${Math.random() * 360}deg)`,
+                  }}
+                />
+              )
+            })}
+          </div>
+          <div className="guest-scratch-modal">
+            <div className="guest-scratch-emoji">🎉</div>
+            <div className="guest-scratch-title">당첨됐어요!</div>
+            <div className="guest-scratch-desc">
+              로그인하면 포인트가 실제로 적립돼요!
+            </div>
+            <button className="guest-scratch-kakao-btn" onClick={handleGuestRevealLogin}>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M9 1.5C4.86 1.5 1.5 4.14 1.5 7.38c0 2.07 1.38 3.9 3.48 4.95l-.87 3.24c-.06.21.18.39.36.27L8.43 13.5c.18.03.36.03.57.03 4.14 0 7.5-2.64 7.5-5.88C16.5 4.14 13.14 1.5 9 1.5z" fill="#3A1D1D"/>
+              </svg>
+              카카오로 시작하기
+            </button>
+            <div className="guest-scratch-dismiss" onClick={handleGuestRevealDismiss}>
+              다음에 하기
+            </div>
+          </div>
+        </div>
+      )}
 
       {showGuestBlock && (
         <div className="guest-scratch-modal-overlay" onClick={handleGuestBlockDismiss}>
