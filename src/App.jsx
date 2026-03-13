@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import MainPage from './pages/MainPage'
 import BottomNav from './components/BottomNav'
 import SplashScreen from './components/SplashScreen'
-import { getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory, updateUserRole } from './api/index'
+import { getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory, updateUserRole, getFlyerDetail } from './api/index'
 
 // 코드 스플리팅: 초기 로딩에 불필요한 페이지/컴포넌트를 lazy 로드
 const DetailPage = lazy(() => import('./pages/DetailPage'))
@@ -79,9 +79,29 @@ export default function App() {
     return localStorage.getItem('needRoleSelection') === 'true'
   })
   const scrollPosRef = useRef(0)
+  const pendingFlyerChecked = useRef(false)
 
   const userId = auth ? auth.userId : GUEST_USER_ID
   const userRole = auth?.role || 'user'
+
+  // OAuth 리다이렉트 후 pendingFlyer 처리
+  useEffect(() => {
+    if (auth && !pendingFlyerChecked.current) {
+      pendingFlyerChecked.current = true
+      const pendingId = localStorage.getItem('pendingFlyerId')
+      if (pendingId) {
+        localStorage.removeItem('pendingFlyerId')
+        getFlyerDetail(pendingId)
+          .then(flyer => {
+            if (flyer) {
+              setScratchFlyer(flyer)
+              setShowScratchCard(true)
+            }
+          })
+          .catch(() => {})
+      }
+    }
+  }, [auth])
 
   // 다크모드 적용
   useEffect(() => {
@@ -123,6 +143,19 @@ export default function App() {
       if (data.role) localStorage.setItem('role', data.role)
     }
     setShowLogin(false)
+    // 로그인 후 대기 중이던 전단지로 이동
+    const pendingId = localStorage.getItem('pendingFlyerId')
+    if (pendingId && data) {
+      localStorage.removeItem('pendingFlyerId')
+      getFlyerDetail(pendingId)
+        .then(flyer => {
+          if (flyer) {
+            setScratchFlyer(flyer)
+            setShowScratchCard(true)
+          }
+        })
+        .catch(() => {})
+    }
   }
 
   const handleLogout = () => {
@@ -179,6 +212,12 @@ export default function App() {
   }, [showScratchCard])
 
   const handleFlyerClick = (flyer) => {
+    // 비로그인 + 이미 맛보기 사용한 경우 → 바로 로그인 유도
+    if (!auth && localStorage.getItem('guest_scratched') === 'true') {
+      localStorage.setItem('pendingFlyerId', String(flyer.id))
+      setShowLogin(true)
+      return
+    }
     scrollPosRef.current = window.scrollY
     setScratchFlyer(flyer)
     setShowScratchCard(true)
@@ -336,8 +375,10 @@ export default function App() {
           <ScratchCard
             flyer={scratchFlyer}
             userId={userId}
+            isLoggedIn={!!auth}
             onComplete={handleScratchComplete}
             onClose={handleScratchClose}
+            onLoginClick={() => setShowLogin(true)}
           />
         )}
 

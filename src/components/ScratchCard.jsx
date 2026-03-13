@@ -4,7 +4,8 @@ import { startScratchSession, completeScratchSession } from '../api/index'
 const CARD_W = 340
 const CARD_H = 400
 const BRUSH_RADIUS = 28
-const REVEAL_THRESHOLD = 0.80
+const REVEAL_THRESHOLD_LOGIN = 0.80
+const REVEAL_THRESHOLD_GUEST = 0.60
 
 function formatPrice(price) {
   if (!price || isNaN(price)) return '0원'
@@ -16,25 +17,63 @@ function getDiscountRate(original, sale) {
   return Math.round((1 - sale / original) * 100)
 }
 
-export default function ScratchCard({ flyer, userId, onComplete, onClose }) {
+// 파티클(confetti) 컴포넌트
+function ConfettiEffect() {
+  const colors = ['#FF6B6B', '#FFE66D', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF9FF3', '#F368E0', '#FF9F43']
+  const particles = Array.from({ length: 40 }, (_, i) => {
+    const color = colors[i % colors.length]
+    const left = Math.random() * 100
+    const delay = Math.random() * 0.8
+    const duration = 1.5 + Math.random() * 1.5
+    const size = 6 + Math.random() * 8
+    const rotate = Math.random() * 360
+    const type = i % 3 // 0: circle, 1: square, 2: star
+    return { id: i, color, left, delay, duration, size, rotate, type }
+  })
+
+  return (
+    <div className="confetti-container">
+      {particles.map(p => (
+        <div
+          key={p.id}
+          className={`confetti-particle confetti-type-${p.type}`}
+          style={{
+            left: `${p.left}%`,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            transform: `rotate(${p.rotate}deg)`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onClose, onLoginClick }) {
   const canvasRef = useRef(null)
   const isDrawing = useRef(false)
   const [revealed, setRevealed] = useState(false)
   const [percentage, setPercentage] = useState(0)
   const [botWarning, setBotWarning] = useState(false)
+  const [showGuestModal, setShowGuestModal] = useState(false)
   const checkInterval = useRef(null)
   const scratchStartTime = useRef(null)
   const sessionTokenRef = useRef(null)
 
-  // 긁기 세션 시작 (서버에 기록)
+  const threshold = isLoggedIn ? REVEAL_THRESHOLD_LOGIN : REVEAL_THRESHOLD_GUEST
+
+  // 긁기 세션 시작 (로그인 유저만 서버 기록)
   useEffect(() => {
-    if (userId && flyer?.id) {
+    if (isLoggedIn && userId && flyer?.id) {
       startScratchSession(userId, flyer.id)
         .then(data => { sessionTokenRef.current = data.sessionToken })
         .catch(() => {})
     }
     scratchStartTime.current = Date.now()
-  }, [userId, flyer?.id])
+  }, [userId, flyer?.id, isLoggedIn])
 
   // 캔버스에 은박 코팅 그리기 (고정 340x400)
   useEffect(() => {
@@ -112,17 +151,24 @@ export default function ScratchCard({ flyer, userId, onComplete, onClose }) {
     }
     const ratio = transparent / (total / 4)
     setPercentage(Math.round(ratio * 100))
-    if (ratio >= REVEAL_THRESHOLD) {
+    if (ratio >= threshold) {
       setRevealed(true)
     }
-  }, [revealed])
+  }, [revealed, threshold])
 
   useEffect(() => {
     if (revealed) {
       clearInterval(checkInterval.current)
-      const durationMs = Date.now() - (scratchStartTime.current || Date.now())
 
-      // 서버에 긁기 완료 보고
+      if (!isLoggedIn) {
+        // 게스트: 서버 저장 안 함, confetti + 로그인 모달
+        localStorage.setItem('guest_scratched', 'true')
+        setTimeout(() => setShowGuestModal(true), 600)
+        return
+      }
+
+      // 로그인 유저: 서버에 긁기 완료 보고
+      const durationMs = Date.now() - (scratchStartTime.current || Date.now())
       if (sessionTokenRef.current) {
         completeScratchSession(sessionTokenRef.current, durationMs)
           .then(result => {
@@ -139,7 +185,7 @@ export default function ScratchCard({ flyer, userId, onComplete, onClose }) {
         setTimeout(() => onComplete(flyer, null), 800)
       }
     }
-  }, [revealed, flyer, onComplete])
+  }, [revealed, flyer, onComplete, isLoggedIn])
 
   const handleStart = (e) => {
     e.preventDefault()
@@ -161,6 +207,19 @@ export default function ScratchCard({ flyer, userId, onComplete, onClose }) {
   const handleEnd = () => {
     isDrawing.current = false
     checkReveal()
+  }
+
+  const handleGuestLogin = () => {
+    // 로그인 전에 현재 전단지 정보 저장 (로그인 후 리다이렉트용)
+    localStorage.setItem('pendingFlyerId', String(flyer.id))
+    setShowGuestModal(false)
+    onClose()
+    onLoginClick()
+  }
+
+  const handleGuestDismiss = () => {
+    setShowGuestModal(false)
+    onClose()
   }
 
   return (
@@ -240,8 +299,32 @@ export default function ScratchCard({ flyer, userId, onComplete, onClose }) {
           />
         </div>
 
-        {revealed && !botWarning && (
+        {/* 로그인 유저: 긁기 완료 메시지 */}
+        {revealed && !botWarning && isLoggedIn && (
           <div className="scratch-complete-msg">전단지가 공개되었습니다!</div>
+        )}
+
+        {/* 게스트: confetti + 로그인 유도 모달 */}
+        {revealed && !isLoggedIn && <ConfettiEffect />}
+        {showGuestModal && (
+          <div className="guest-scratch-modal-overlay">
+            <div className="guest-scratch-modal">
+              <div className="guest-scratch-emoji">🎉</div>
+              <div className="guest-scratch-title">당첨됐어요!</div>
+              <div className="guest-scratch-desc">
+                로그인하면 포인트가 실제로 적립돼요!
+              </div>
+              <button className="guest-scratch-kakao-btn" onClick={handleGuestLogin}>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M9 1.5C4.86 1.5 1.5 4.14 1.5 7.38c0 2.07 1.38 3.9 3.48 4.95l-.87 3.24c-.06.21.18.39.36.27L8.43 13.5c.18.03.36.03.57.03 4.14 0 7.5-2.64 7.5-5.88C16.5 4.14 13.14 1.5 9 1.5z" fill="#3A1D1D"/>
+                </svg>
+                카카오로 시작하기
+              </button>
+              <div className="guest-scratch-dismiss" onClick={handleGuestDismiss}>
+                다음에 하기
+              </div>
+            </div>
+          </div>
         )}
 
         {botWarning && (

@@ -2159,6 +2159,151 @@ body {
   color: #FF6B7A;
 }
 
+/* ==================== 게스트 긁기 Confetti + 로그인 모달 ==================== */
+
+/* Confetti 파티클 */
+.confetti-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.confetti-particle {
+  position: absolute;
+  top: -10px;
+  opacity: 0;
+  animation: confettiFall linear forwards;
+}
+
+.confetti-type-0 {
+  border-radius: 50%;
+}
+
+.confetti-type-1 {
+  border-radius: 2px;
+}
+
+.confetti-type-2 {
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+@keyframes confettiFall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(500px) rotate(720deg) scale(0.3);
+  }
+}
+
+/* 게스트 로그인 유도 모달 */
+.guest-scratch-modal-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  animation: fadeIn 0.3s ease;
+}
+
+.guest-scratch-modal {
+  background: #fff;
+  border-radius: 24px;
+  padding: 36px 28px 28px;
+  text-align: center;
+  width: 300px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: guestModalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+[data-theme="dark"] .guest-scratch-modal {
+  background: #1e1e1e;
+}
+
+@keyframes guestModalPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.guest-scratch-emoji {
+  font-size: 64px;
+  line-height: 1;
+  margin-bottom: 12px;
+  animation: guestEmojiPulse 1s ease infinite;
+}
+
+@keyframes guestEmojiPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.guest-scratch-title {
+  font-family: 'Dongle', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.guest-scratch-desc {
+  font-family: 'Dongle', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.4;
+}
+
+.guest-scratch-kakao-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: #FEE500;
+  color: #3A1D1D;
+  font-family: 'Dongle', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.guest-scratch-kakao-btn:active {
+  transform: scale(0.97);
+}
+
+.guest-scratch-dismiss {
+  margin-top: 16px;
+  font-family: 'Dongle', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-tertiary, #999);
+  cursor: pointer;
+  padding: 8px;
+}
+
+.guest-scratch-dismiss:hover {
+  color: var(--text-secondary);
+}
+
 /* ==================== 퀴즈 모달 (QuizModal) ==================== */
 
 .quiz-overlay {
