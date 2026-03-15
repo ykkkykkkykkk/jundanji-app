@@ -54,20 +54,42 @@ router.post('/flyers/:flyerId/quizzes', authMiddleware, async (req, res) => {
   res.status(201).json({ ok: true, data: { count: quizzes.length } })
 })
 
-// 퀴즈 목록 조회 (사업자용 - 전단지별)
+// 퀴즈 목록 조회 (전단지별)
 // GET /api/flyers/:flyerId/quizzes
+// - 사업자(본인 전단지) / admin: answer 포함
+// - 일반 유저: answer 제외 (정답 노출 방지)
 router.get('/flyers/:flyerId/quizzes', async (req, res) => {
   const { flyerId } = req.params
   const quizzes = await db.prepare('SELECT * FROM quizzes WHERE flyer_id = ? ORDER BY sort_order').all(flyerId)
+
+  // Authorization 헤더가 있으면 사업자/admin 여부 확인
+  let includeAnswer = false
+  const header = req.headers['authorization']
+  if (header && header.startsWith('Bearer ')) {
+    try {
+      const jwt = require('jsonwebtoken')
+      const decoded = jwt.verify(header.slice(7), process.env.JWT_SECRET)
+      const reqUser = await db.prepare('SELECT role FROM users WHERE id = ?').get(decoded.userId)
+      if (reqUser && (reqUser.role === 'admin' || reqUser.role === 'business')) {
+        includeAnswer = true
+      }
+    } catch (_) {
+      // 토큰 무효 — 일반 유저 취급
+    }
+  }
+
   res.json({
     ok: true,
-    data: quizzes.map(q => ({
-      id: q.id,
-      flyerId: q.flyer_id,
-      question: q.question,
-      answer: q.answer,
-      point: q.point,
-    })),
+    data: quizzes.map(q => {
+      const item = {
+        id: q.id,
+        flyerId: q.flyer_id,
+        question: q.question,
+        point: q.point,
+      }
+      if (includeAnswer) item.answer = q.answer
+      return item
+    }),
   })
 })
 

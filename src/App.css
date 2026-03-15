@@ -118,6 +118,27 @@ body {
   color: #FF4757;
 }
 
+.empty-feed {
+  text-align: center;
+  padding: 80px 20px 60px;
+}
+.empty-feed-icon {
+  font-size: 56px;
+  display: block;
+  margin-bottom: 16px;
+}
+.empty-feed-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary, #888);
+  margin: 0 0 8px;
+}
+.empty-feed-sub {
+  font-size: 14px;
+  color: var(--text-lighter, #aaa);
+  margin: 0;
+}
+
 /* ==================== 검색 오버레이 ==================== */
 .search-overlay {
   position: fixed;

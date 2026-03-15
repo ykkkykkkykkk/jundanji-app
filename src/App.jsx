@@ -448,6 +448,8 @@ export default function App() {
           onDarkModeToggle={() => setDarkMode(prev => !prev)}
           bookmarkedIds={bookmarkedIds}
           onBookmarkToggle={handleBookmarkToggle}
+          userRole={userRole}
+          isLoggedIn={!!auth}
         />
       )}
 

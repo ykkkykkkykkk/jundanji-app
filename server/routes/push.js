@@ -1,6 +1,7 @@
 const { Router } = require('express')
 const webpush = require('web-push')
 const db = require('../db')
+const authMiddleware = require('../middleware/auth')
 
 const router = Router()
 
@@ -23,9 +24,9 @@ router.get('/vapid-public-key', (req, res) => {
   res.json({ ok: true, data: process.env.VAPID_PUBLIC_KEY })
 })
 
-// 구독 저장
+// 구독 저장 (인증 필수 — 스팸 방지)
 // POST /api/push/subscribe  { endpoint, keys: { p256dh, auth } }
-router.post('/subscribe', async (req, res) => {
+router.post('/subscribe', authMiddleware, async (req, res) => {
   const { endpoint, keys } = req.body
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ ok: false, message: '구독 정보가 올바르지 않습니다.' })

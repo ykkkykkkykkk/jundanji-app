@@ -23,7 +23,7 @@ function isExpired(validUntil) {
   return new Date(y, m - 1, d + 1) <= new Date()
 }
 
-export default function MainPage({ onFlyerClick, onNotificationClick, unreadCount, darkMode, onDarkModeToggle, bookmarkedIds = new Set(), onBookmarkToggle }) {
+export default function MainPage({ onFlyerClick, onNotificationClick, unreadCount, darkMode, onDarkModeToggle, bookmarkedIds = new Set(), onBookmarkToggle, userRole, isLoggedIn }) {
   const [categories, setCategories] = useState(['전체'])
   const [activeCategory, setActiveCategory] = useState('전체')
   const [flyers, setFlyers] = useState([])
@@ -202,8 +202,24 @@ export default function MainPage({ onFlyerClick, onNotificationClick, unreadCoun
         )}
 
         {!loading && !error && flyers.length === 0 && (
-          <div className="list-status">
-            {searchQuery ? `"${searchQuery}"에 해당하는 전단지가 없습니다.` : '해당 카테고리에 전단지가 없습니다.'}
+          <div className="empty-feed">
+            <span className="empty-feed-icon">
+              {searchQuery ? '🔍' : '📭'}
+            </span>
+            <p className="empty-feed-text">
+              {searchQuery
+                ? `"${searchQuery}"에 해당하는 전단지가 없습니다.`
+                : activeCategory !== '전체'
+                  ? '해당 카테고리에 전단지가 없습니다.'
+                  : '아직 등록된 전단지가 없습니다.'}
+            </p>
+            {!searchQuery && activeCategory === '전체' && (
+              <p className="empty-feed-sub">
+                {userRole === 'business'
+                  ? '첫 번째 전단지를 등록해보세요!'
+                  : '곧 새로운 전단지가 올라올 예정이에요.'}
+              </p>
+            )}
           </div>
         )}
 

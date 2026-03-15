@@ -697,6 +697,24 @@ async function initialize() {
     }
   }
 
+  // 5. 필수 테이블 존재 확인
+  const requiredTables = [
+    'users', 'flyers', 'flyer_items', 'share_history', 'point_transactions',
+    'notifications', 'bookmarks', 'push_subscriptions', 'quizzes', 'quiz_attempts',
+    'visit_verifications', 'categories', 'device_fingerprints', 'scratch_sessions',
+    'gift_orders', 'gift_products', 'system_settings', 'schema_migrations',
+  ]
+  const existingRows = await db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table'"
+  ).all()
+  const existingTables = new Set(existingRows.map(r => r.name))
+  const missingTables = requiredTables.filter(t => !existingTables.has(t))
+  if (missingTables.length > 0) {
+    console.error(`[DB] 필수 테이블 누락: ${missingTables.join(', ')}`)
+  } else {
+    console.log(`[DB] 필수 테이블 ${requiredTables.length}개 확인 완료`)
+  }
+
   console.log(`[DB] 초기화 완료 (${isTurso ? 'Turso' : 'Local SQLite'})`)
 }
 
