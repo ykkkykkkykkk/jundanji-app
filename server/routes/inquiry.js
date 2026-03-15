@@ -8,10 +8,11 @@ const INQUIRY_CATEGORIES = ['일반', '포인트', '기프티콘', '전단지', 
 
 // 문의 등록
 // POST /api/inquiries
-router.post('/inquiries', async (req, res) => {
-  const { userId, category, title, content } = req.body
+router.post('/inquiries', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+  const { category, title, content } = req.body
 
-  if (!userId || !title || !content) {
+  if (!title || !content) {
     return res.status(400).json({ ok: false, message: '제목과 내용을 입력해주세요.' })
   }
 

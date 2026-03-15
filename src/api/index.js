@@ -248,20 +248,19 @@ export async function getUserBookmarks(token, userId) {
 }
 
 // 즐겨찾기 추가
-export async function addBookmark(userId, flyerId) {
+export async function addBookmark(token, flyerId) {
   return fetchJSON(`${BASE}/bookmarks`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, flyerId }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ flyerId }),
   })
 }
 
 // 즐겨찾기 취소
-export async function removeBookmark(userId, flyerId) {
+export async function removeBookmark(token, flyerId) {
   return fetchJSON(`${BASE}/bookmarks/${flyerId}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
+    headers: { Authorization: `Bearer ${token}` },
   })
 }
 
@@ -511,11 +510,11 @@ export async function getBanks() {
 // ======== 1:1 문의 API ========
 
 // 문의 등록
-export async function createInquiry(userId, category, title, content) {
+export async function createInquiry(token, category, title, content) {
   return fetchJSON(`${BASE}/inquiries`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, category, title, content }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ category, title, content }),
   })
 }
 

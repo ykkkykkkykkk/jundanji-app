@@ -47,11 +47,12 @@ router.get('/users/:userId/bookmarks', authMiddleware, async (req, res) => {
 })
 
 // 즐겨찾기 추가
-// POST /api/bookmarks  { userId, flyerId }
-router.post('/bookmarks', async (req, res) => {
-  const { userId, flyerId } = req.body
-  if (!userId || !flyerId) {
-    return res.status(400).json({ ok: false, message: 'userId, flyerId 필수입니다.' })
+// POST /api/bookmarks  { flyerId }
+router.post('/bookmarks', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+  const { flyerId } = req.body
+  if (!flyerId) {
+    return res.status(400).json({ ok: false, message: 'flyerId 필수입니다.' })
   }
 
   const flyer = await db.prepare('SELECT id FROM flyers WHERE id = ?').get(flyerId)
@@ -71,11 +72,10 @@ router.post('/bookmarks', async (req, res) => {
 })
 
 // 즐겨찾기 취소
-// DELETE /api/bookmarks/:flyerId  { userId }
-router.delete('/bookmarks/:flyerId', async (req, res) => {
+// DELETE /api/bookmarks/:flyerId
+router.delete('/bookmarks/:flyerId', authMiddleware, async (req, res) => {
   const { flyerId } = req.params
-  const { userId } = req.body
-  if (!userId) return res.status(400).json({ ok: false, message: 'userId 필수입니다.' })
+  const userId = req.user.userId
 
   await db.prepare(
     'DELETE FROM bookmarks WHERE user_id = ? AND flyer_id = ?'

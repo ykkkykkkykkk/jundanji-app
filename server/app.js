@@ -13,6 +13,16 @@ if (!isVercel) {
   require('dotenv').config({ path: require('path').join(__dirname, '.env') })
 }
 
+// 프로덕션 필수 환경변수 체크
+if (isVercel) {
+  const REQUIRED_ENVS = ['JWT_SECRET', 'ADMIN_PASSWORD', 'ADMIN_JWT_SECRET']
+  const missing = REQUIRED_ENVS.filter(key => !process.env[key])
+  if (missing.length > 0) {
+    console.error(`[FATAL] 필수 환경변수 미설정: ${missing.join(', ')}`)
+    process.exit(1)
+  }
+}
+
 const express = require('express')
 const cors = require('cors')
 const cookieParser = require('cookie-parser')

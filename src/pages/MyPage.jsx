@@ -124,7 +124,7 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
     setInquiryLoading(true)
     setInquiryMsg('')
     try {
-      const res = await createInquiry(userId, inquiryCategory, inquiryTitle, inquiryContent)
+      const res = await createInquiry(token, inquiryCategory, inquiryTitle, inquiryContent)
       setInquiryMsg(res.message || '문의가 접수되었습니다!')
       setInquiryTitle('')
       setInquiryContent('')

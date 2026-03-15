@@ -33,6 +33,11 @@ router.post('/request', authMiddleware, async (req, res) => {
     return res.status(400).json({ ok: false, message: '필수 값이 누락되었습니다.' })
   }
 
+  const pointsNum = Number(points)
+  if (!Number.isInteger(pointsNum) || pointsNum <= 0) {
+    return res.status(400).json({ ok: false, message: 'points는 양의 정수여야 합니다.' })
+  }
+
   const user = await db.prepare('SELECT points, provider_id, created_at FROM users WHERE id = ?').get(Number(userId))
   if (!user) {
     return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
@@ -47,7 +52,7 @@ router.post('/request', authMiddleware, async (req, res) => {
     }
   }
 
-  if (user.points < points) {
+  if (user.points < pointsNum) {
     return res.status(400).json({ ok: false, message: '포인트가 부족합니다.' })
   }
 
@@ -59,10 +64,10 @@ router.post('/request', authMiddleware, async (req, res) => {
 
   try {
     await db.batch([
-      { sql: 'UPDATE users SET points = points - ? WHERE id = ? AND points >= ?', args: [points, Number(userId), points] },
-      { sql: "INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, 'use', ?)", args: [Number(userId), points, `상품 교환 - ${product_name}`] },
-      { sql: "INSERT INTO gift_orders (user_id, gift_id, gift_name, amount, status, phone) VALUES (?, ?, ?, ?, 'pending', ?)", args: [Number(userId), giftId, `${product_emoji || ''} ${product_name}`.trim(), points, encryptedPhone] },
-      { sql: 'INSERT INTO exchange_requests (user_id, user_kakao_id, product_name, product_emoji, points, phone) VALUES (?, ?, ?, ?, ?, ?)', args: [String(userId), user.provider_id || null, product_name, product_emoji || null, points, encryptedPhone] },
+      { sql: 'UPDATE users SET points = points - ? WHERE id = ? AND points >= ?', args: [pointsNum, Number(userId), pointsNum] },
+      { sql: "INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, 'use', ?)", args: [Number(userId), pointsNum, `상품 교환 - ${product_name}`] },
+      { sql: "INSERT INTO gift_orders (user_id, gift_id, gift_name, amount, status, phone) VALUES (?, ?, ?, ?, 'pending', ?)", args: [Number(userId), giftId, `${product_emoji || ''} ${product_name}`.trim(), pointsNum, encryptedPhone] },
+      { sql: 'INSERT INTO exchange_requests (user_id, user_kakao_id, product_name, product_emoji, points, phone) VALUES (?, ?, ?, ?, ?, ?)', args: [String(userId), user.provider_id || null, product_name, product_emoji || null, pointsNum, encryptedPhone] },
     ])
   } catch (err) {
     console.error('[교환 신청 오류]', err.message)

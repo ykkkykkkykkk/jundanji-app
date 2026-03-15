@@ -281,11 +281,11 @@ export default function App() {
   const handleBookmarkToggle = async (flyer) => {
     const isMarked = bookmarkedIds.has(flyer.id)
     if (isMarked) {
-      await removeBookmark(userId, flyer.id).catch(() => {})
+      await removeBookmark(auth?.token, flyer.id).catch(() => {})
       setBookmarkedIds(prev => { const s = new Set(prev); s.delete(flyer.id); return s })
       setBookmarkedFlyers(prev => prev.filter(f => f.id !== flyer.id))
     } else {
-      await addBookmark(userId, flyer.id).catch(() => {})
+      await addBookmark(auth?.token, flyer.id).catch(() => {})
       setBookmarkedIds(prev => new Set([...prev, flyer.id]))
       setBookmarkedFlyers(prev => [{ ...flyer }, ...prev])
     }
