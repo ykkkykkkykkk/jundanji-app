@@ -1,13 +1,37 @@
 const BASE = (import.meta.env.VITE_API_BASE ?? '') + '/api'
 
+// 401 응답 시 자동 로그아웃 (탈퇴 계정 JWT 차단 대응)
+function handle401() {
+  const savedDarkMode = localStorage.getItem('darkMode')
+  const savedOnboarding = localStorage.getItem('onboarding_done')
+  localStorage.clear()
+  if (savedDarkMode) localStorage.setItem('darkMode', savedDarkMode)
+  if (savedOnboarding) localStorage.setItem('onboarding_done', savedOnboarding)
+  sessionStorage.clear()
+  window.location.replace('/')
+}
+
+// 안전한 JSON 파싱 (서버가 HTML 등 비-JSON 응답을 반환할 경우 대응)
+async function safeParseJSON(res) {
+  try {
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
 async function fetchJSON(url, options) {
   let res
   try {
     res = await fetch(url, options)
   } catch {
-    throw Object.assign(new Error('네트워크 오류가 발생했습니다.'), { status: 0 })
+    throw Object.assign(new Error('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.'), { status: 0 })
   }
-  const data = await res.json()
+  if (res.status === 401) { handle401(); return }
+  const data = await safeParseJSON(res)
+  if (!data) {
+    throw Object.assign(new Error('서버 응답을 처리할 수 없습니다.'), { status: res.status })
+  }
   if (!data.ok) {
     const err = new Error(data.message || '서버 오류')
     err.status = res.status
@@ -23,9 +47,11 @@ async function fetchJSONSafe(url, options) {
   try {
     res = await fetch(url, options)
   } catch {
-    return { ok: false, status: 0, data: null, message: '네트워크 오류가 발생했습니다.' }
+    return { ok: false, status: 0, data: null, message: '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.' }
   }
-  const json = await res.json()
+  if (res.status === 401) { handle401(); return { ok: false, status: 401, data: null, message: '로그인이 만료되었습니다.' } }
+  const json = await safeParseJSON(res)
+  if (!json) return { ok: false, status: res.status, data: null, message: '서버 응답을 처리할 수 없습니다.' }
   return { ok: !!json.ok, status: res.status, data: json.data ?? null, message: json.message ?? null }
 }
 
@@ -35,9 +61,13 @@ async function fetchJSONFull(url, options) {
   try {
     res = await fetch(url, options)
   } catch {
-    throw Object.assign(new Error('네트워크 오류가 발생했습니다.'), { status: 0 })
+    throw Object.assign(new Error('네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요.'), { status: 0 })
   }
-  const json = await res.json()
+  if (res.status === 401) { handle401(); return }
+  const json = await safeParseJSON(res)
+  if (!json) {
+    throw Object.assign(new Error('서버 응답을 처리할 수 없습니다.'), { status: res.status })
+  }
   if (!json.ok) {
     const err = new Error(json.message || '서버 오류')
     err.status = res.status
@@ -446,10 +476,10 @@ export async function startScratchSession(token, flyerId) {
 }
 
 // 긁기 세션 완료
-export async function completeScratchSession(sessionToken, durationMs) {
+export async function completeScratchSession(token, sessionToken, durationMs) {
   const result = await fetchJSONSafe(`${BASE}/scratch/complete`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ sessionToken, durationMs }),
   })
   return { ok: result.ok, message: result.message, botDetected: result.status === 403 && !result.ok, data: result.data }

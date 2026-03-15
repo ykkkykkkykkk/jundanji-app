@@ -71,9 +71,14 @@ router.post('/share', authMiddleware, async (req, res) => {
 
   // 트랜잭션으로 공유 내역 + 포인트 적립 + shareCount +1 처리
   const shareTx = db.transaction(async (txDb) => {
-    await txDb.prepare(
-      'INSERT INTO share_history (user_id, flyer_id, points) VALUES (?, ?, ?)'
+    const { changes } = await txDb.prepare(
+      'INSERT OR IGNORE INTO share_history (user_id, flyer_id, points) VALUES (?, ?, ?)'
     ).run(userId, flyerId, earnedPoints)
+
+    // UNIQUE 제약에 의해 중복 INSERT가 무시된 경우 (race condition)
+    if (changes === 0) {
+      throw new Error('DUPLICATE_SHARE')
+    }
 
     await txDb.prepare(
       'UPDATE users SET points = points + ? WHERE id = ?'
@@ -97,6 +102,9 @@ router.post('/share', authMiddleware, async (req, res) => {
   try {
     await shareTx()
   } catch (err) {
+    if (err.message === 'DUPLICATE_SHARE') {
+      return res.status(409).json({ ok: false, message: '이미 공유한 전단지입니다.' })
+    }
     console.error('[공유 처리 오류]', err.message)
     return res.status(500).json({ ok: false, message: '공유 처리 중 오류가 발생했습니다.' })
   }

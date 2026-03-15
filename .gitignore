@@ -8,3 +8,18 @@ server/uploads/
 auth
 auth-wal
 *.bat
+
+# 테스트/빌드 임시 산출물
+dist-test*/
+dist-trace*/
+test-build-tmp/
+playwright-report/
+test-results/
+build_output.log
+build_err.txt
+build_log.txt
+*.output
+
+# 에이전트 작업 보고서 (임시 분석 문서)
+ADMIN_AUDIT_*.md
+MCP_INVESTIGATION.md

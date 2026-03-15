@@ -156,8 +156,12 @@ app.use('/api/settings', settingsRouter)
 
 // 만료 전단지 자동 삭제 (Vercel Cron)
 app.get('/api/cron/cleanup', async (req, res) => {
-  // Vercel Cron 인증 (CRON_SECRET 설정 시)
-  if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+  // CRON_SECRET 미설정 시 엔드포인트 비활성화 (프로덕션 보호)
+  if (!process.env.CRON_SECRET) {
+    return res.status(403).json({ ok: false, message: 'CRON_SECRET이 설정되지 않아 비활성화됨' })
+  }
+  // Vercel Cron 인증
+  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ ok: false, message: 'Unauthorized' })
   }
 

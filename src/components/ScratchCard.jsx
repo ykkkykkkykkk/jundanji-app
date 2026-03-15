@@ -134,7 +134,7 @@ export default function ScratchCard({ flyer, userId, token, isLoggedIn, onComple
     // 로그인 유저: 서버에 긁기 완료 보고
     const durationMs = Date.now() - (scratchStartTime.current || Date.now())
     if (sessionTokenRef.current) {
-      completeScratchSession(sessionTokenRef.current, durationMs)
+      completeScratchSession(token, sessionTokenRef.current, durationMs)
         .then(result => {
           if (result.botDetected) {
             setBotWarning(true)

@@ -79,15 +79,16 @@ router.post('/scratch/start', authMiddleware, async (req, res) => {
 
 // 긁기 세션 완료
 // POST /api/scratch/complete
-router.post('/scratch/complete', async (req, res) => {
+router.post('/scratch/complete', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
   const { sessionToken, durationMs } = req.body
   if (!sessionToken) {
     return res.status(400).json({ ok: false, message: 'sessionToken 필수입니다.' })
   }
 
   const session = await db.prepare(
-    'SELECT * FROM scratch_sessions WHERE token = ?'
-  ).get(sessionToken)
+    'SELECT * FROM scratch_sessions WHERE token = ? AND user_id = ?'
+  ).get(sessionToken, userId)
 
   if (!session) {
     return res.status(404).json({ ok: false, message: '유효하지 않은 세션입니다.' })
