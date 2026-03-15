@@ -20,7 +20,7 @@ function isValidPhone(value) {
   return /^01[0-9]\d{7,8}$/.test(digits)
 }
 
-export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick, onPointsChange, token }) {
+export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick, onPointsChange, token, showToast }) {
   const [cat, setCat] = useState('전체')
   const [selected, setSelected] = useState(null)
   const [showModal, setShowModal] = useState(false)

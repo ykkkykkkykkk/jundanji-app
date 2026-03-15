@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 
-export default function QrDisplay({ qrCode, storeName, qrPoint }) {
+export default function QrDisplay({ qrCode, storeName, qrPoint, showToast }) {
   const canvasRef = useRef(null)
   const [ready, setReady] = useState(false)
 
@@ -14,10 +14,14 @@ export default function QrDisplay({ qrCode, storeName, qrPoint }) {
     }).then(() => setReady(true)).catch(() => {})
   }, [qrCode])
 
+  const notify = (msg, type) => {
+    if (showToast) showToast(msg, type)
+  }
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(qrCode)
-      alert('QR 코드가 복사되었습니다!')
+      notify('QR 코드가 복사되었습니다!', 'success')
     } catch {
       const ta = document.createElement('textarea')
       ta.value = qrCode
@@ -25,7 +29,7 @@ export default function QrDisplay({ qrCode, storeName, qrPoint }) {
       ta.select()
       document.execCommand('copy')
       document.body.removeChild(ta)
-      alert('QR 코드가 복사되었습니다!')
+      notify('QR 코드가 복사되었습니다!', 'success')
     }
   }
 

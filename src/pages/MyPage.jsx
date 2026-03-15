@@ -24,7 +24,7 @@ function LockedOverlay({ onClick }) {
   )
 }
 
-export default function MyPage({ points, nickname, shareHistory, quizHistory = [], visitHistory = [], isLoggedIn, onLoginClick, onLogout, onNicknameChange, token, userId, onPointsChange, bookmarkedFlyers = [], onBookmarkToggle, onFlyerClick, onNavigate }) {
+export default function MyPage({ points, nickname, shareHistory, quizHistory = [], visitHistory = [], isLoggedIn, onLoginClick, onLogout, onNicknameChange, token, userId, onPointsChange, bookmarkedFlyers = [], onBookmarkToggle, onFlyerClick, onNavigate, showToast }) {
   const totalShare = shareHistory.length
   const [editingNick, setEditingNick] = useState(false)
   const [nickInput, setNickInput] = useState(nickname)
@@ -68,7 +68,7 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
       localStorage.setItem('nickname', nickInput.trim())
       setEditingNick(false)
     } catch (e) {
-      alert(e.message)
+      showToast?.(e.message, 'error')
     } finally {
       setNickLoading(false)
     }
@@ -144,7 +144,7 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
       setShowDeleteConfirm(false)
       onLogout()
     } catch (e) {
-      alert(e.message || '탈퇴 처리 중 오류가 발생했습니다.')
+      showToast?.(e.message || '탈퇴 처리 중 오류가 발생했습니다.', 'error')
     } finally {
       setDeleteLoading(false)
     }

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import MainPage from './pages/MainPage'
 import BottomNav from './components/BottomNav'
 import SplashScreen from './components/SplashScreen'
+import Toast from './components/Toast'
 import { getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory, updateUserRole, getFlyerDetail, getPublicSettings } from './api/index'
 
 // 코드 스플리팅: 초기 로딩에 불필요한 페이지/컴포넌트를 lazy 로드
@@ -16,6 +17,7 @@ const PointAnimation = lazy(() => import('./components/PointAnimation'))
 const ScratchCard = lazy(() => import('./components/ScratchCard'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
 const TermsPage = lazy(() => import('./pages/TermsPage'))
+const OnboardingTour = lazy(() => import('./components/OnboardingTour'))
 
 const GUEST_USER_ID = 1  // 게스트 사용자
 
@@ -125,7 +127,7 @@ export default function App() {
     // 에러 파라미터 처리
     if (params.get('error')) {
       const reason = params.get('reason') || params.get('error')
-      setTimeout(() => alert('로그인 실패: ' + decodeURIComponent(reason)), 500)
+      setTimeout(() => setToast({ message: '로그인 실패: ' + decodeURIComponent(reason), type: 'error', visible: true }), 500)
       window.history.replaceState({}, '', '/')
     }
     return loadAuth()
@@ -152,8 +154,20 @@ export default function App() {
     return localStorage.getItem('needRoleSelection') === 'true'
   })
   const [systemSettings, setSystemSettings] = useState(null)
+  const [toast, setToast] = useState({ message: '', type: 'info', visible: false })
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return !localStorage.getItem('onboarding_done')
+  })
   const scrollPosRef = useRef(0)
   const pendingFlyerChecked = useRef(false)
+
+  const showToast = useCallback((message, type = 'info') => {
+    setToast({ message, type, visible: true })
+  }, [])
+
+  const hideToast = useCallback(() => {
+    setToast(prev => ({ ...prev, visible: false }))
+  }, [])
 
   const userId = auth ? auth.userId : GUEST_USER_ID
   const userRole = auth?.role || 'user'
@@ -243,10 +257,12 @@ export default function App() {
   }
 
   const handleLogout = () => {
-    // localStorage 완전 초기화 (darkMode만 보존)
+    // localStorage 완전 초기화 (darkMode, onboarding_done 보존)
     const savedDarkMode = localStorage.getItem('darkMode')
+    const savedOnboarding = localStorage.getItem('onboarding_done')
     localStorage.clear()
     if (savedDarkMode) localStorage.setItem('darkMode', savedDarkMode)
+    if (savedOnboarding) localStorage.setItem('onboarding_done', savedOnboarding)
     // sessionStorage 초기화
     sessionStorage.clear()
     // 유저 상태 초기화
@@ -409,6 +425,14 @@ export default function App() {
     return <SplashScreen onFinish={handleSplashFinish} />
   }
 
+  if (showOnboarding) {
+    return (
+      <Suspense fallback={lazyFallback}>
+        <OnboardingTour onComplete={() => setShowOnboarding(false)} />
+      </Suspense>
+    )
+  }
+
   if (showLogin) {
     return <Suspense fallback={lazyFallback}><LoginPage onLogin={handleLogin} /></Suspense>
   }
@@ -443,6 +467,7 @@ export default function App() {
             onQuizPoints={handleQuizPoints}
             scratchToken={lastScratchToken}
             token={auth?.token}
+            showToast={showToast}
           />
         )}
 
@@ -458,6 +483,7 @@ export default function App() {
           <NotificationPage
             onBack={() => setPage('main')}
             onUnreadChange={setUnreadCount}
+            showToast={showToast}
           />
         )}
 
@@ -470,6 +496,7 @@ export default function App() {
             onPointsEarned={handleQrPointsEarned}
             onBack={() => setPage('main')}
             token={auth?.token}
+            showToast={showToast}
           />
         )}
 
@@ -481,6 +508,7 @@ export default function App() {
             onLoginClick={() => setShowLogin(true)}
             onPointsChange={setPoints}
             token={auth?.token}
+            showToast={showToast}
           />
         )}
 
@@ -502,6 +530,7 @@ export default function App() {
             onBookmarkToggle={handleBookmarkToggle}
             onFlyerClick={handleFlyerClick}
             onNavigate={handleNavigate}
+            showToast={showToast}
           />
         )}
 
@@ -671,6 +700,13 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onClose={hideToast}
+      />
     </>
   )
 }

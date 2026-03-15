@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { getNotifications, readAllNotifications, getVapidPublicKey, savePushSubscription, deletePushSubscription } from '../api/index'
 import { isPushSupported, subscribePush, unsubscribePush, getPushSubscription } from '../utils/push'
 
-export default function NotificationPage({ onBack, onUnreadChange }) {
+export default function NotificationPage({ onBack, onUnreadChange, showToast }) {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [pushSubscribed, setPushSubscribed] = useState(false)
@@ -54,7 +54,7 @@ export default function NotificationPage({ onBack, onUnreadChange }) {
         setPushSubscribed(true)
       }
     } catch (e) {
-      alert(e.message || '알림 설정 중 오류가 발생했습니다.')
+      showToast?.(e.message || '알림 설정 중 오류가 발생했습니다.', 'error')
     } finally {
       setPushLoading(false)
     }
