@@ -143,20 +143,39 @@ router.post('/quiz/attempt', authMiddleware, async (req, res) => {
     return res.status(409).json({ ok: false, message: '이미 퀴즈에 참여했습니다.' })
   }
 
-  // 사업자 예산 부족 체크
-  const flyerForBudget = await db.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyerId)
-  if (flyerForBudget && flyerForBudget.owner_id) {
-    const owner = await db.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyerForBudget.owner_id)
-    if (owner && owner.point_budget < quiz.point) {
-      return res.status(400).json({ ok: false, message: '이 전단지의 포인트 예산이 소진되었습니다.' })
-    }
+  // 정답 비교 (Unicode NFC 정규화 + 대소문자 무시 + 공백 통일 + 특수문자/이모지 제거)
+  function normalizeAnswer(str) {
+    return str
+      .normalize('NFC')           // Unicode 정규화 (한글 자모 결합 등)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')       // 연속 공백 → 단일 공백
+      .replace(/[\u200B-\u200D\uFEFF]/g, '') // 제로폭 공백 제거
+      .replace(/[^\p{L}\p{N}\s]/gu, '')      // 문자/숫자/공백만 유지 (이모지·특수문자 제거)
   }
-
-  // 정답 비교 (공백 제거, 대소문자 무시)
-  const isCorrect = answer.trim().toLowerCase() === quiz.answer.trim().toLowerCase()
+  const isCorrect = normalizeAnswer(answer) === normalizeAnswer(quiz.answer)
   const earnedPoints = isCorrect ? quiz.point : 0
 
+  // 예산 검증 + 응시 기록 + 포인트 지급을 하나의 트랜잭션에서 처리
+  let budgetExhausted = false
   const attemptTx = db.transaction(async (txDb) => {
+    // 사업자 예산 부족 체크 (트랜잭션 내부에서 수행)
+    if (isCorrect) {
+      const flyerForBudget = await txDb.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyerId)
+      if (flyerForBudget && flyerForBudget.owner_id) {
+        const owner = await txDb.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyerForBudget.owner_id)
+        if (owner && owner.point_budget < quiz.point) {
+          budgetExhausted = true
+          // 예산 소진이어도 quiz_attempts 기록은 남겨서 중복 응시 방지
+          await txDb.prepare(`
+            INSERT INTO quiz_attempts (user_id, flyer_id, quiz_id, selected_idx, is_correct, points_earned)
+            VALUES (?, ?, ?, 0, ?, 0)
+          `).run(userId, flyerId, quizId, isCorrect ? 1 : 0)
+          return
+        }
+      }
+    }
+
     await txDb.prepare(`
       INSERT INTO quiz_attempts (user_id, flyer_id, quiz_id, selected_idx, is_correct, points_earned)
       VALUES (?, ?, ?, 0, ?, ?)
@@ -183,6 +202,10 @@ router.post('/quiz/attempt', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('[퀴즈 응시 오류]', err.message)
     return res.status(500).json({ ok: false, message: '퀴즈 응시 중 오류가 발생했습니다.' })
+  }
+
+  if (budgetExhausted) {
+    return res.status(400).json({ ok: false, message: '이 전단지의 포인트 예산이 소진되었습니다.' })
   }
 
   const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').get(userId)

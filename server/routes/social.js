@@ -1,10 +1,60 @@
 const { Router } = require('express')
+const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const db = require('../db')
 
 const router = Router()
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
+
+// ─── OAuth CSRF state 헬퍼 ───────────────────────────────────────────────────
+// Vercel serverless는 인스턴스 간 메모리를 공유하지 않으므로
+// state를 HMAC-SHA256으로 서명하여 쿠키에 저장하고 콜백에서 검증한다.
+
+const STATE_COOKIE = 'oauth_state'
+const STATE_COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: 'lax',
+  maxAge: 10 * 60 * 1000, // 10분
+  // 프로덕션에서는 https 필수
+  secure: process.env.NODE_ENV === 'production',
+  path: '/',
+}
+
+function signState(state) {
+  const secret = process.env.JWT_SECRET || 'fallback-secret'
+  return crypto.createHmac('sha256', secret).update(state).digest('hex')
+}
+
+function generateState() {
+  return crypto.randomBytes(16).toString('hex')
+}
+
+/** state 쿠키를 세트하고 서명된 값을 반환 */
+function setStateCookie(res, state) {
+  const signed = `${state}.${signState(state)}`
+  res.cookie(STATE_COOKIE, signed, STATE_COOKIE_OPTS)
+  return state
+}
+
+/** 쿼리의 state와 쿠키의 state를 검증. 성공하면 쿠키 삭제 후 true, 실패하면 false */
+function verifyAndClearState(req, res, incomingState) {
+  const cookie = req.cookies?.[STATE_COOKIE]
+  res.clearCookie(STATE_COOKIE, { path: '/' })
+
+  if (!cookie || !incomingState) return false
+  const [savedState, savedSig] = cookie.split('.')
+  if (!savedState || !savedSig) return false
+  if (savedState !== incomingState) return false
+
+  const expectedSig = signState(savedState)
+  // timing-safe 비교
+  try {
+    return crypto.timingSafeEqual(Buffer.from(savedSig), Buffer.from(expectedSig))
+  } catch {
+    return false
+  }
+}
 
 function signToken(userId) {
   return jwt.sign({ userId }, process.env.JWT_SECRET, {
@@ -40,18 +90,25 @@ router.get('/kakao', (req, res) => {
   if (!process.env.KAKAO_CLIENT_ID) {
     return res.status(501).json({ ok: false, message: 'KAKAO_CLIENT_ID 미설정' })
   }
+  const state = generateState()
+  setStateCookie(res, state)
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: process.env.KAKAO_CLIENT_ID,
     redirect_uri: process.env.KAKAO_REDIRECT_URI,
+    state,
   })
   res.redirect(`https://kauth.kakao.com/oauth/authorize?${params}`)
 })
 
 // GET /api/auth/kakao/callback  → 카카오 인가 코드 수신
 router.get('/kakao/callback', async (req, res) => {
-  const { code } = req.query
+  const { code, state } = req.query
   if (!code) return res.redirect(`${FRONTEND_URL}?error=kakao_denied`)
+
+  if (!verifyAndClearState(req, res, state)) {
+    return res.status(400).redirect(`${FRONTEND_URL}?error=kakao_csrf`)
+  }
 
   try {
     // 1. 액세스 토큰 발급
@@ -134,20 +191,27 @@ router.get('/google', (req, res) => {
   if (!process.env.GOOGLE_CLIENT_ID) {
     return res.status(501).json({ ok: false, message: 'GOOGLE_CLIENT_ID 미설정' })
   }
+  const state = generateState()
+  setStateCookie(res, state)
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: process.env.GOOGLE_REDIRECT_URI,
     scope: 'openid email profile',
     access_type: 'online',
+    state,
   })
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`)
 })
 
 // GET /api/auth/google/callback  → 구글 인가 코드 수신
 router.get('/google/callback', async (req, res) => {
-  const { code } = req.query
+  const { code, state } = req.query
   if (!code) return res.redirect(`${FRONTEND_URL}?error=google_denied`)
+
+  if (!verifyAndClearState(req, res, state)) {
+    return res.status(400).redirect(`${FRONTEND_URL}?error=google_csrf`)
+  }
 
   try {
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {

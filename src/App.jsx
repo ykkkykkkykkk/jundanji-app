@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react'
 import MainPage from './pages/MainPage'
 import BottomNav from './components/BottomNav'
 import SplashScreen from './components/SplashScreen'
-import { getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory, updateUserRole, getFlyerDetail } from './api/index'
+import { getUserPoints, getUserShareHistory, getUserBookmarks, addBookmark, removeBookmark, getQuizHistory, getVisitHistory, updateUserRole, getFlyerDetail, getPublicSettings } from './api/index'
 
 // 코드 스플리팅: 초기 로딩에 불필요한 페이지/컴포넌트를 lazy 로드
 const DetailPage = lazy(() => import('./pages/DetailPage'))
@@ -14,6 +14,8 @@ const QrScanPage = lazy(() => import('./pages/QrScanPage'))
 const GiftShopPage = lazy(() => import('./pages/GiftShopPage'))
 const PointAnimation = lazy(() => import('./components/PointAnimation'))
 const ScratchCard = lazy(() => import('./components/ScratchCard'))
+const PrivacyPage = lazy(() => import('./pages/PrivacyPage'))
+const TermsPage = lazy(() => import('./pages/TermsPage'))
 
 const GUEST_USER_ID = 1  // 게스트 사용자
 
@@ -116,6 +118,7 @@ export default function App() {
       localStorage.setItem('role', role)
       if (isNew && !localStorage.getItem('roleSelected')) localStorage.setItem('needRoleSelection', 'true')
       localStorage.removeItem('guest_scratched')
+      localStorage.removeItem('guest_scratch_count')
       window.history.replaceState({}, '', '/')
       return { token, userId: Number(userId), nickname: decoded, role }
     }
@@ -148,6 +151,7 @@ export default function App() {
   const [showRoleSelection, setShowRoleSelection] = useState(() => {
     return localStorage.getItem('needRoleSelection') === 'true'
   })
+  const [systemSettings, setSystemSettings] = useState(null)
   const scrollPosRef = useRef(0)
   const pendingFlyerChecked = useRef(false)
 
@@ -172,6 +176,13 @@ export default function App() {
       }
     }
   }, [auth])
+
+  // 서버 공개 설정 로드
+  useEffect(() => {
+    getPublicSettings()
+      .then(data => setSystemSettings(data))
+      .catch(() => {})
+  }, [])
 
   // 다크모드 적용
   useEffect(() => {
@@ -213,6 +224,7 @@ export default function App() {
       setNickname(data.nickname)
       if (data.role) localStorage.setItem('role', data.role)
       localStorage.removeItem('guest_scratched')
+      localStorage.removeItem('guest_scratch_count')
     }
     setShowLogin(false)
     // 로그인 후 대기 중이던 전단지로 이동
@@ -287,12 +299,19 @@ export default function App() {
   const [showGuestBlock, setShowGuestBlock] = useState(false)
   const [guestBlockFlyer, setGuestBlockFlyer] = useState(null)
 
+  const guestScratchLimit = systemSettings
+    ? Number(systemSettings.guest_scratch_limit) || 1
+    : 1
+
   const handleFlyerClick = (flyer) => {
-    // 비로그인 + 이미 맛보기 사용한 경우 → 로그인 유도 모달
-    if (!auth && localStorage.getItem('guest_scratched') === 'true') {
-      setGuestBlockFlyer(flyer)
-      setShowGuestBlock(true)
-      return
+    // 비로그인 + 게스트 긁기 횟수 초과 → 로그인 유도 모달
+    if (!auth) {
+      const count = Number(localStorage.getItem('guest_scratch_count') || '0')
+      if (count >= guestScratchLimit) {
+        setGuestBlockFlyer(flyer)
+        setShowGuestBlock(true)
+        return
+      }
     }
     scrollPosRef.current = window.scrollY
     setScratchFlyer(flyer)
@@ -333,11 +352,14 @@ export default function App() {
   const [guestRevealFlyer, setGuestRevealFlyer] = useState(null)
 
   const handleGuestReveal = useCallback((flyer) => {
-    // ScratchCard를 먼저 닫고, 약간의 딜레이 후 모달 표시
+    // 게스트 긁기 완료 → count 증가
+    const count = Number(localStorage.getItem('guest_scratch_count') || '0')
+    localStorage.setItem('guest_scratch_count', String(count + 1))
+    // 하위 호환: 기존 guest_scratched flag도 유지
+    localStorage.setItem('guest_scratched', 'true')
     setShowScratchCard(false)
     setScratchFlyer(null)
     setGuestRevealFlyer(flyer)
-    // 즉시 모달 표시
     requestAnimationFrame(() => {
       setShowGuestReveal(true)
     })
@@ -479,7 +501,16 @@ export default function App() {
             bookmarkedFlyers={bookmarkedFlyers}
             onBookmarkToggle={handleBookmarkToggle}
             onFlyerClick={handleFlyerClick}
+            onNavigate={handleNavigate}
           />
+        )}
+
+        {page === 'privacy' && (
+          <PrivacyPage onBack={() => setPage('mypage')} />
+        )}
+
+        {page === 'terms' && (
+          <TermsPage onBack={() => setPage('mypage')} />
         )}
       </Suspense>
 
@@ -497,10 +528,16 @@ export default function App() {
           <ScratchCard
             flyer={scratchFlyer}
             userId={userId}
+            token={auth?.token}
             isLoggedIn={!!auth}
             onComplete={handleScratchComplete}
             onClose={handleScratchClose}
             onGuestReveal={handleGuestReveal}
+            threshold={
+              !!auth
+                ? Number(systemSettings?.scratch_threshold_login) || 0.80
+                : Number(systemSettings?.scratch_threshold_guest) || 0.80
+            }
           />
         )}
 

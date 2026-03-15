@@ -49,7 +49,7 @@ router.get('/users/:userId/gift-orders', authMiddleware, async (req, res) => {
   res.json({ ok: true, data: orders })
 })
 
-// 기프티콘 목록 조회
+// 기프티콘 목록 조회 (하드코딩 — 하위 호환)
 // GET /api/gifts
 router.get('/gifts', (req, res) => {
   const list = Object.entries(GIFT_ITEMS).map(([id, item]) => ({
@@ -60,11 +60,25 @@ router.get('/gifts', (req, res) => {
   res.json({ ok: true, data: list })
 })
 
-// 기프티콘 교환 신청 (포인트 차감 + 주문 생성)
-// POST /api/gift-orders
+// 기프티콘 상품 목록 조회 (DB 기반, 공개)
+// GET /api/gifts/products
+router.get('/gifts/products', async (req, res) => {
+  try {
+    const products = await db.prepare(
+      'SELECT id, gift_key, emoji, brand, name, points, category FROM gift_products WHERE is_active = 1 ORDER BY sort_order ASC, id ASC'
+    ).all()
+    res.json({ ok: true, data: products })
+  } catch (err) {
+    console.error('[기프티콘 상품 목록 조회 오류]', err.message)
+    res.status(500).json({ ok: false, message: '상품 목록 조회 중 오류가 발생했습니다.' })
+  }
+})
+
+// [DEPRECATED] 기프티콘 교환 신청 — POST /api/exchange/request 를 사용하세요
+// 하위 호환을 위해 exchange.js의 동일 로직 실행
 router.post('/gift-orders', authMiddleware, async (req, res) => {
   const userId = req.user.userId
-  const { giftId } = req.body
+  const { giftId, phone } = req.body
 
   if (!giftId) {
     return res.status(400).json({ ok: false, message: '필수 값이 누락되었습니다.' })
@@ -77,16 +91,18 @@ router.post('/gift-orders', authMiddleware, async (req, res) => {
 
   await db.ensureUser(userId)
 
-  const user = await db.prepare('SELECT points FROM users WHERE id = ?').get(Number(userId))
+  const user = await db.prepare('SELECT points, provider_id FROM users WHERE id = ?').get(Number(userId))
   if (!user || user.points < gift.points) {
     return res.status(400).json({ ok: false, message: '포인트가 부족합니다.' })
   }
 
   try {
+    const exchangeId = `exchange_${Date.now()}`
     await db.batch([
-      { sql: 'UPDATE users SET points = points - ? WHERE id = ?', args: [gift.points, Number(userId)] },
-      { sql: "INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, 'use', ?)", args: [Number(userId), gift.points, `기프티콘 교환 - ${gift.name}`] },
-      { sql: "INSERT INTO gift_orders (user_id, gift_id, gift_name, amount, status) VALUES (?, ?, ?, ?, 'pending')", args: [Number(userId), giftId, gift.name, gift.points] },
+      { sql: 'UPDATE users SET points = points - ? WHERE id = ? AND points >= ?', args: [gift.points, Number(userId), gift.points] },
+      { sql: "INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, 'use', ?)", args: [Number(userId), gift.points, `상품 교환 - ${gift.name}`] },
+      { sql: "INSERT INTO gift_orders (user_id, gift_id, gift_name, amount, status, phone) VALUES (?, ?, ?, ?, 'pending', ?)", args: [Number(userId), exchangeId, gift.name, gift.points, phone || ''] },
+      { sql: 'INSERT INTO exchange_requests (user_id, user_kakao_id, product_name, product_emoji, points, phone) VALUES (?, ?, ?, ?, ?, ?)', args: [String(userId), user.provider_id || null, gift.name, null, gift.points, phone || ''] },
     ])
   } catch (err) {
     console.error('[기프티콘 주문 오류]', err.message)
@@ -99,6 +115,7 @@ router.post('/gift-orders', authMiddleware, async (req, res) => {
     ok: true,
     data: { remainPoints: updated.points },
     message: `${gift.name} 교환 신청 완료! 관리자 확인 후 카카오톡으로 발송됩니다.`,
+    deprecated: '이 엔드포인트는 deprecated 예정입니다. POST /api/exchange/request 를 사용하세요.',
   })
 })
 

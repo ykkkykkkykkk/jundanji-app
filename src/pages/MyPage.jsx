@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { updateNickname, createInquiry, getInquiryHistory, requestWithdrawal, getWithdrawalHistory, getBanks } from '../api/index'
+import { updateNickname, createInquiry, getInquiryHistory, requestWithdrawal, getWithdrawalHistory, getBanks, deleteAccount } from '../api/index'
 
 function isExpired(validUntil) {
   const [y, m, d] = validUntil.split('.').map(Number)
@@ -24,7 +24,7 @@ function LockedOverlay({ onClick }) {
   )
 }
 
-export default function MyPage({ points, nickname, shareHistory, quizHistory = [], visitHistory = [], isLoggedIn, onLoginClick, onLogout, onNicknameChange, token, userId, onPointsChange, bookmarkedFlyers = [], onBookmarkToggle, onFlyerClick }) {
+export default function MyPage({ points, nickname, shareHistory, quizHistory = [], visitHistory = [], isLoggedIn, onLoginClick, onLogout, onNicknameChange, token, userId, onPointsChange, bookmarkedFlyers = [], onBookmarkToggle, onFlyerClick, onNavigate }) {
   const totalShare = shareHistory.length
   const [editingNick, setEditingNick] = useState(false)
   const [nickInput, setNickInput] = useState(nickname)
@@ -54,6 +54,10 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
   const [withdrawHistory, setWithdrawHistory] = useState([])
   const [showWithdrawHistory, setShowWithdrawHistory] = useState(false)
   const [bankList, setBankList] = useState([])
+
+  // 회원 탈퇴 관련 상태
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   const handleNickSave = async () => {
     if (!nickInput.trim() || nickInput === nickname) { setEditingNick(false); return }
@@ -130,6 +134,19 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
       setInquiryMsg(e.message)
     } finally {
       setInquiryLoading(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true)
+    try {
+      await deleteAccount(token)
+      setShowDeleteConfirm(false)
+      onLogout()
+    } catch (e) {
+      alert(e.message || '탈퇴 처리 중 오류가 발생했습니다.')
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -604,10 +621,66 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
         )}
       </div>
 
+      {/* 법적 문서 링크 */}
+      <div className="mypage-legal-links">
+        <button className="mypage-legal-link" onClick={() => onNavigate?.('privacy')}>개인정보 처리방침</button>
+        <span style={{ color: 'var(--text-lighter)' }}>|</span>
+        <button className="mypage-legal-link" onClick={() => onNavigate?.('terms')}>이용약관</button>
+      </div>
+
+      {/* 회원 탈퇴 */}
+      {isLoggedIn && (
+        <div style={{ textAlign: 'center', padding: '8px 0 0' }}>
+          <button
+            className="mypage-delete-account-btn"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            회원 탈퇴
+          </button>
+        </div>
+      )}
+
       {/* 앱 버전 */}
-      <div style={{ textAlign: 'center', padding: '24px 0 80px', fontSize: 12, color: '#aaa' }}>
+      <div style={{ textAlign: 'center', padding: '8px 0 80px', fontSize: 12, color: '#aaa' }}>
         v4.3
       </div>
+
+      {/* 회원 탈퇴 확인 모달 */}
+      {showDeleteConfirm && (
+        <div
+          className="mypage-delete-overlay"
+          onClick={() => !deleteLoading && setShowDeleteConfirm(false)}
+        >
+          <div
+            className="mypage-delete-modal"
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 48, lineHeight: 1, marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 8, color: 'var(--text-primary)' }}>
+              정말 탈퇴하시겠습니까?
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 24 }}>
+              탈퇴 시 모든 포인트와 활동 내역이<br />삭제되며 복구할 수 없습니다.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                className="mypage-delete-cancel-btn"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteLoading}
+              >
+                취소
+              </button>
+              <button
+                className="mypage-delete-confirm-btn"
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? '처리 중...' : '탈퇴하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

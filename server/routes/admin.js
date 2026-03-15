@@ -1,37 +1,43 @@
 const express = require('express')
-const crypto = require('crypto')
+const jwt = require('jsonwebtoken')
 const db = require('../db')
+const { decrypt } = require('../crypto-utils')
 
 const router = express.Router()
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234'
+// 어드민 JWT는 별도 시크릿을 사용하여 일반 유저 JWT와 분리
+const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || 'fallback-admin-secret'
+const ADMIN_JWT_EXPIRES_IN = '8h'
 
-// 토큰 생성
-function generateToken() {
-  return crypto.randomBytes(32).toString('hex')
+// JWT 발급
+function signAdminToken() {
+  return jwt.sign({ role: 'admin' }, ADMIN_JWT_SECRET, { expiresIn: ADMIN_JWT_EXPIRES_IN })
 }
-
-// 활성 토큰 저장 (메모리)
-const activeTokens = new Set()
 
 // 인증 미들웨어
 function requireAdmin(req, res, next) {
   const token = req.headers['x-admin-token']
-  if (!token || !activeTokens.has(token)) {
+  if (!token) {
     return res.status(401).json({ ok: false, message: '관리자 인증이 필요합니다.' })
   }
-  next()
+  try {
+    const payload = jwt.verify(token, ADMIN_JWT_SECRET)
+    if (payload.role !== 'admin') throw new Error('권한 없음')
+    next()
+  } catch (err) {
+    return res.status(401).json({ ok: false, message: '관리자 인증이 필요합니다.' })
+  }
 }
 
 // ======================== 로그인 ========================
 
 router.post('/login', (req, res) => {
   const { password } = req.body
-  if (password !== ADMIN_PASSWORD) {
+  if (!password || password !== ADMIN_PASSWORD) {
     return res.status(401).json({ ok: false, message: '비밀번호가 올바르지 않습니다.' })
   }
-  const token = generateToken()
-  activeTokens.add(token)
+  const token = signAdminToken()
   res.json({ ok: true, token })
 })
 
@@ -213,7 +219,17 @@ router.get('/gift-orders', requireAdmin, async (req, res) => {
     LIMIT ? OFFSET ?
   `).all(...params, Number(limit), Number(offset))
 
-  res.json({ ok: true, orders, total, page: Number(page), limit: Number(limit) })
+  // 어드민은 전화번호 복호화 후 반환 (기존 평문 데이터 하위 호환 포함)
+  const decryptedOrders = orders.map(order => {
+    if (!order.phone) return order
+    try {
+      return { ...order, phone: decrypt(order.phone) }
+    } catch (_) {
+      return order
+    }
+  })
+
+  res.json({ ok: true, orders: decryptedOrders, total, page: Number(page), limit: Number(limit) })
 })
 
 router.patch('/gift-orders/:id/status', requireAdmin, async (req, res) => {
@@ -439,7 +455,20 @@ router.get('/withdrawals', requireAdmin, async (req, res) => {
       LIMIT ? OFFSET ?
     `).all(...params, Number(limit), Number(offset))
 
-    res.json({ ok: true, withdrawals, total, page: Number(page), limit: Number(limit) })
+    // 어드민은 계좌번호/예금주 복호화 후 반환 (기존 평문 데이터 하위 호환 포함)
+    const decryptedWithdrawals = withdrawals.map(w => {
+      try {
+        return {
+          ...w,
+          account_number: decrypt(w.account_number),
+          account_holder: decrypt(w.account_holder),
+        }
+      } catch (_) {
+        return w
+      }
+    })
+
+    res.json({ ok: true, withdrawals: decryptedWithdrawals, total, page: Number(page), limit: Number(limit) })
   } catch (err) {
     console.error('[출금 목록 조회 오류]', err.message)
     res.status(500).json({ ok: false, message: '출금 목록 조회 중 오류가 발생했습니다.' })
@@ -499,5 +528,132 @@ router.post('/withdrawals/:id/reject', requireAdmin, async (req, res) => {
   }
 })
 
+// ======================== 시스템 설정 관리 ========================
+
+router.get('/settings', requireAdmin, async (req, res) => {
+  try {
+    const settings = await db.prepare(
+      'SELECT key, value, description, updated_at FROM system_settings ORDER BY key ASC'
+    ).all()
+    res.json({ ok: true, data: settings })
+  } catch (err) {
+    console.error('[설정 조회 오류]', err.message)
+    res.status(500).json({ ok: false, message: '설정 조회 중 오류가 발생했습니다.' })
+  }
+})
+
+router.patch('/settings/:key', requireAdmin, async (req, res) => {
+  const { key } = req.params
+  const { value } = req.body
+
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return res.status(400).json({ ok: false, message: 'value는 필수입니다.' })
+  }
+
+  try {
+    const existing = await db.prepare('SELECT key FROM system_settings WHERE key = ?').get(key)
+    if (!existing) {
+      return res.status(404).json({ ok: false, message: '존재하지 않는 설정 키입니다.' })
+    }
+
+    const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).replace('T', ' ')
+    await db.prepare(
+      'UPDATE system_settings SET value = ?, updated_at = ? WHERE key = ?'
+    ).run(String(value), now, key)
+
+    res.json({ ok: true, message: `설정 '${key}'이(가) '${value}'로 변경되었습니다.` })
+  } catch (err) {
+    console.error('[설정 수정 오류]', err.message)
+    res.status(500).json({ ok: false, message: '설정 수정 중 오류가 발생했습니다.' })
+  }
+})
+
+// ======================== 기프티콘 상품 관리 ========================
+
+router.get('/gift-products', requireAdmin, async (req, res) => {
+  try {
+    const products = await db.prepare(
+      'SELECT * FROM gift_products ORDER BY sort_order ASC, id ASC'
+    ).all()
+    res.json({ ok: true, data: products })
+  } catch (err) {
+    console.error('[기프티콘 상품 조회 오류]', err.message)
+    res.status(500).json({ ok: false, message: '상품 조회 중 오류가 발생했습니다.' })
+  }
+})
+
+router.post('/gift-products', requireAdmin, async (req, res) => {
+  const { gift_key, emoji, brand, name, points, category, sort_order } = req.body
+
+  if (!gift_key || !emoji || !brand || !name || !points || !category) {
+    return res.status(400).json({ ok: false, message: '필수 항목을 모두 입력해주세요. (gift_key, emoji, brand, name, points, category)' })
+  }
+
+  if (!Number.isInteger(Number(points)) || Number(points) <= 0) {
+    return res.status(400).json({ ok: false, message: 'points는 양의 정수여야 합니다.' })
+  }
+
+  try {
+    await db.prepare(
+      'INSERT INTO gift_products (gift_key, emoji, brand, name, points, category, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(gift_key, emoji, brand, name, Number(points), category, Number(sort_order) || 0)
+
+    res.status(201).json({ ok: true, message: '상품이 추가되었습니다.' })
+  } catch (err) {
+    if (err.message && err.message.includes('UNIQUE')) {
+      return res.status(409).json({ ok: false, message: '이미 존재하는 gift_key입니다.' })
+    }
+    console.error('[기프티콘 상품 추가 오류]', err.message)
+    res.status(500).json({ ok: false, message: '상품 추가 중 오류가 발생했습니다.' })
+  }
+})
+
+router.patch('/gift-products/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params
+  const { emoji, brand, name, points, category, sort_order, is_active } = req.body
+
+  try {
+    const existing = await db.prepare('SELECT * FROM gift_products WHERE id = ?').get(Number(id))
+    if (!existing) {
+      return res.status(404).json({ ok: false, message: '상품을 찾을 수 없습니다.' })
+    }
+
+    const newEmoji = emoji !== undefined ? emoji : existing.emoji
+    const newBrand = brand !== undefined ? brand : existing.brand
+    const newName = name !== undefined ? name : existing.name
+    const newPoints = points !== undefined ? Number(points) : existing.points
+    const newCategory = category !== undefined ? category : existing.category
+    const newSortOrder = sort_order !== undefined ? Number(sort_order) : existing.sort_order
+    const newIsActive = is_active !== undefined ? (is_active ? 1 : 0) : existing.is_active
+
+    await db.prepare(
+      'UPDATE gift_products SET emoji = ?, brand = ?, name = ?, points = ?, category = ?, sort_order = ?, is_active = ? WHERE id = ?'
+    ).run(newEmoji, newBrand, newName, newPoints, newCategory, newSortOrder, newIsActive, Number(id))
+
+    res.json({ ok: true, message: '상품이 수정되었습니다.' })
+  } catch (err) {
+    console.error('[기프티콘 상품 수정 오류]', err.message)
+    res.status(500).json({ ok: false, message: '상품 수정 중 오류가 발생했습니다.' })
+  }
+})
+
+router.delete('/gift-products/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params
+
+  try {
+    const existing = await db.prepare('SELECT * FROM gift_products WHERE id = ?').get(Number(id))
+    if (!existing) {
+      return res.status(404).json({ ok: false, message: '상품을 찾을 수 없습니다.' })
+    }
+
+    // 소프트 삭제 (is_active = 0)
+    await db.prepare('UPDATE gift_products SET is_active = 0 WHERE id = ?').run(Number(id))
+
+    res.json({ ok: true, message: '상품이 비활성화되었습니다.' })
+  } catch (err) {
+    console.error('[기프티콘 상품 삭제 오류]', err.message)
+    res.status(500).json({ ok: false, message: '상품 삭제 중 오류가 발생했습니다.' })
+  }
+})
+
 module.exports = router
-module.exports.activeTokens = activeTokens

@@ -4026,6 +4026,44 @@ body {
   margin-bottom: 20px;
 }
 
+/* 기프티콘 로딩/에러 상태 */
+.gshop-page-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.gshop-page-retry-btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 10px;
+  background: #FF6B00;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.gshop-page-retry-btn:active {
+  transform: scale(0.96);
+}
+
+/* 공용 스피너 */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-main, #eee);
+  border-top-color: #FF6B00;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* MyPage 비로그인 잠금 오버레이 */
 .mypage-locked-section {
   position: relative;
@@ -4076,4 +4114,205 @@ body {
   font-size: 22px;
   font-weight: 700;
   color: var(--text-secondary);
+}
+
+/* ==================== 법적 문서 페이지 (개인정보/이용약관) ==================== */
+
+.legal-page {
+  padding-bottom: 40px;
+}
+
+.legal-content {
+  padding: 20px 16px;
+}
+
+.legal-updated {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+
+.legal-section {
+  margin-bottom: 28px;
+}
+
+.legal-section h2 {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.legal-section p {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 8px;
+}
+
+.legal-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.legal-section li {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  padding-left: 14px;
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.legal-section li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  font-weight: 900;
+  color: var(--text-muted);
+}
+
+.legal-section li strong {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 로그인 약관 동의 */
+.login-terms {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+
+.login-terms-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-terms-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #FF6B00;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.login-terms-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex: 1;
+}
+
+.login-terms-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: #FF6B00;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  flex-shrink: 0;
+}
+
+/* MyPage 하단 법적 링크 */
+.mypage-legal-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 0 8px;
+}
+
+.mypage-legal-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  text-decoration: underline;
+}
+
+/* 회원 탈퇴 버튼 */
+.mypage-delete-account-btn {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  text-decoration: underline;
+}
+
+.mypage-delete-account-btn:active {
+  color: #D32F2F;
+}
+
+/* 회원 탈퇴 확인 모달 */
+.mypage-delete-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mypage-delete-modal {
+  background: var(--card-bg, #fff);
+  border-radius: 24px;
+  padding: 36px 28px 28px;
+  text-align: center;
+  width: 300px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.mypage-delete-cancel-btn {
+  flex: 1;
+  padding: 14px;
+  border: 1px solid var(--border-color, #eee);
+  border-radius: 12px;
+  background: var(--card-bg, #fff);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mypage-delete-cancel-btn:active {
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.mypage-delete-confirm-btn {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: #D32F2F;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mypage-delete-confirm-btn:active {
+  background: #B71C1C;
+}
+
+.mypage-delete-confirm-btn:disabled,
+.mypage-delete-cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

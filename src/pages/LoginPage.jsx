@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { login, register, generateDeviceFingerprint, checkDevice, registerDevice } from '../api/index'
+
+const TermsPageLazy = lazy(() => import('./TermsPage'))
+const PrivacyPageLazy = lazy(() => import('./PrivacyPage'))
 
 export default function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('login')  // 'login' | 'register'
@@ -10,10 +13,14 @@ export default function LoginPage({ onLogin }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [deviceFp, setDeviceFp] = useState('')
+  const [agreeTerms, setAgreeTerms] = useState(false)
+  const [agreePrivacy, setAgreePrivacy] = useState(false)
+  const [showTermsPage, setShowTermsPage] = useState(false)
+  const [showPrivacyPage, setShowPrivacyPage] = useState(false)
 
-  // 기기 fingerprint 생성
+  // 기기 fingerprint 생성 (SHA-256 비동기)
   useEffect(() => {
-    setDeviceFp(generateDeviceFingerprint())
+    generateDeviceFingerprint().then(fp => setDeviceFp(fp)).catch(() => {})
   }, [])
 
   const handleSubmit = async (e) => {
@@ -25,9 +32,10 @@ export default function LoginPage({ onLogin }) {
       if (mode === 'login') {
         data = await login(email, password)
         // 로그인 시 기기 등록
-        if (deviceFp) registerDevice(data.userId, deviceFp).catch(() => {})
+        if (deviceFp) registerDevice(data.token, deviceFp).catch(() => {})
       } else {
         if (!nickname.trim()) { setError('닉네임을 입력해주세요.'); setLoading(false); return }
+        if (!agreeTerms || !agreePrivacy) { setError('이용약관 및 개인정보 처리방침에 동의해주세요.'); setLoading(false); return }
 
         // 기기 다중 계정 체크
         if (deviceFp) {
@@ -116,9 +124,36 @@ export default function LoginPage({ onLogin }) {
             required
           />
 
+          {mode === 'register' && (
+            <div className="login-terms">
+              <div className="login-terms-row">
+                <input
+                  type="checkbox"
+                  id="agree-terms"
+                  className="login-terms-checkbox"
+                  checked={agreeTerms}
+                  onChange={e => setAgreeTerms(e.target.checked)}
+                />
+                <label htmlFor="agree-terms" className="login-terms-label">이용약관에 동의합니다</label>
+                <button type="button" className="login-terms-link" onClick={() => setShowTermsPage(true)}>보기</button>
+              </div>
+              <div className="login-terms-row">
+                <input
+                  type="checkbox"
+                  id="agree-privacy"
+                  className="login-terms-checkbox"
+                  checked={agreePrivacy}
+                  onChange={e => setAgreePrivacy(e.target.checked)}
+                />
+                <label htmlFor="agree-privacy" className="login-terms-label">개인정보 처리방침에 동의합니다</label>
+                <button type="button" className="login-terms-link" onClick={() => setShowPrivacyPage(true)}>보기</button>
+              </div>
+            </div>
+          )}
+
           {error && <p className="login-error">{error}</p>}
 
-          <button className="login-submit-btn" type="submit" disabled={loading}>
+          <button className="login-submit-btn" type="submit" disabled={loading || (mode === 'register' && (!agreeTerms || !agreePrivacy))}>
             {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원가입'}
           </button>
         </form>
@@ -148,6 +183,22 @@ export default function LoginPage({ onLogin }) {
           게스트로 둘러보기
         </button>
       </div>
+
+      {showTermsPage && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg-root)' }}>
+          <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>로딩 중...</div>}>
+            <TermsPageLazy onBack={() => setShowTermsPage(false)} />
+          </Suspense>
+        </div>
+      )}
+
+      {showPrivacyPage && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg-root)', overflow: 'auto' }}>
+          <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>로딩 중...</div>}>
+            <PrivacyPageLazy onBack={() => setShowPrivacyPage(false)} />
+          </Suspense>
+        </div>
+      )}
     </div>
   )
 }

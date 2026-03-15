@@ -71,11 +71,12 @@ router.post('/qr/verify', authMiddleware, async (req, res) => {
     return res.status(404).json({ ok: false, message: '유효하지 않은 QR 코드입니다.' })
   }
 
-  // 1일 1회 방문 인증 체크
+  // 1일 1회 방문 인증 체크 (Turso 호환: Node.js에서 오늘 날짜 계산)
+  const today = new Date().toISOString().split('T')[0]
   const existing = await db.prepare(
     `SELECT id FROM visit_verifications
-     WHERE user_id = ? AND flyer_id = ? AND DATE(verified_at) = DATE('now', 'localtime')`
-  ).get(userId, flyer.id)
+     WHERE user_id = ? AND flyer_id = ? AND DATE(verified_at) = ?`
+  ).get(userId, flyer.id, today)
 
   if (existing) {
     return res.status(409).json({ ok: false, message: '오늘 이미 방문 인증을 완료했습니다. 내일 다시 인증할 수 있어요!' })
@@ -83,16 +84,19 @@ router.post('/qr/verify', authMiddleware, async (req, res) => {
 
   const earnedPoints = flyer.qr_point || 100
 
-  // 사업자 예산 부족 체크
-  const flyerFull = await db.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyer.id)
-  if (flyerFull && flyerFull.owner_id) {
-    const owner = await db.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyerFull.owner_id)
-    if (owner && owner.point_budget < earnedPoints) {
-      return res.status(400).json({ ok: false, message: '이 매장의 포인트 예산이 소진되었습니다.' })
-    }
-  }
-
+  // 예산 검증 + 방문 기록 + 포인트 지급을 하나의 트랜잭션에서 처리
+  let budgetExhausted = false
   const verifyTx = db.transaction(async (txDb) => {
+    // 사업자 예산 부족 체크 (트랜잭션 내부)
+    const flyerFull = await txDb.prepare('SELECT owner_id FROM flyers WHERE id = ?').get(flyer.id)
+    if (flyerFull && flyerFull.owner_id) {
+      const owner = await txDb.prepare('SELECT point_budget FROM users WHERE id = ?').get(flyerFull.owner_id)
+      if (owner && owner.point_budget < earnedPoints) {
+        budgetExhausted = true
+        return
+      }
+    }
+
     await txDb.prepare(`
       INSERT INTO visit_verifications (user_id, flyer_id, points_earned)
       VALUES (?, ?, ?)
@@ -117,6 +121,10 @@ router.post('/qr/verify', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('[QR 인증 오류]', err.message)
     return res.status(500).json({ ok: false, message: 'QR 인증 중 오류가 발생했습니다.' })
+  }
+
+  if (budgetExhausted) {
+    return res.status(400).json({ ok: false, message: '이 매장의 포인트 예산이 소진되었습니다.' })
   }
 
   const updatedUser = await db.prepare('SELECT points FROM users WHERE id = ?').get(userId)

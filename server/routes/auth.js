@@ -80,8 +80,9 @@ router.post('/login', async (req, res) => {
 // 내 정보 조회
 // GET /api/users/me  (Authorization: Bearer <token>)
 router.get('/me', authMiddleware, async (req, res) => {
-  const user = await db.prepare('SELECT id, email, nickname, points, role, created_at FROM users WHERE id = ?').get(req.user.userId)
+  const user = await db.prepare('SELECT id, email, nickname, points, role, status, created_at FROM users WHERE id = ?').get(req.user.userId)
   if (!user) return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
+  if (user.status === 'deleted') return res.status(410).json({ ok: false, message: '탈퇴한 계정입니다.' })
   res.json({ ok: true, data: { ...user, role: user.role || 'user' } })
 })
 
@@ -109,6 +110,53 @@ router.patch('/me/role', authMiddleware, async (req, res) => {
 
   await db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, req.user.userId)
   res.json({ ok: true, data: { role } })
+})
+
+// 회원 탈퇴
+// DELETE /api/users/me
+router.delete('/me', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+
+  try {
+    const user = await db.prepare('SELECT id, status FROM users WHERE id = ?').get(userId)
+    if (!user) {
+      return res.status(404).json({ ok: false, message: '유저를 찾을 수 없습니다.' })
+    }
+    if (user.status === 'deleted') {
+      return res.status(409).json({ ok: false, message: '이미 탈퇴한 계정입니다.' })
+    }
+
+    // 트랜잭션으로 원자적 처리 (부분 삭제 방지)
+    const deleteTx = db.transaction(async (txDb) => {
+      // 개인식별정보 익명화 (통계용 데이터는 user_id 참조만 유지)
+      await txDb.prepare(`
+        UPDATE users
+        SET nickname = '탈퇴한 사용자',
+            email = NULL,
+            password_hash = NULL,
+            provider_id = NULL,
+            phone = NULL,
+            status = 'deleted',
+            points = 0
+        WHERE id = ?
+      `).run(userId)
+
+      // 기기 fingerprint 삭제
+      await txDb.prepare('DELETE FROM device_fingerprints WHERE user_id = ?').run(userId)
+
+      // 북마크 삭제
+      await txDb.prepare('DELETE FROM bookmarks WHERE user_id = ?').run(userId)
+    })
+    await deleteTx()
+
+    res.json({
+      ok: true,
+      message: '회원 탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.',
+    })
+  } catch (err) {
+    console.error('[회원 탈퇴 오류]', err.message)
+    res.status(500).json({ ok: false, message: '회원 탈퇴 처리 중 오류가 발생했습니다.' })
+  }
 })
 
 module.exports = router

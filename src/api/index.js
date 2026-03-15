@@ -1,7 +1,12 @@
 const BASE = (import.meta.env.VITE_API_BASE ?? '') + '/api'
 
 async function fetchJSON(url, options) {
-  const res = await fetch(url, options)
+  let res
+  try {
+    res = await fetch(url, options)
+  } catch {
+    throw Object.assign(new Error('네트워크 오류가 발생했습니다.'), { status: 0 })
+  }
   const data = await res.json()
   if (!data.ok) {
     const err = new Error(data.message || '서버 오류')
@@ -9,6 +14,36 @@ async function fetchJSON(url, options) {
     throw err
   }
   return data.data
+}
+
+// fetchJSON과 동일하지만 throw 대신 { ok, status, data, message } 형태로 반환
+// 호출부에서 HTTP status별 분기가 필요한 경우 사용
+async function fetchJSONSafe(url, options) {
+  let res
+  try {
+    res = await fetch(url, options)
+  } catch {
+    return { ok: false, status: 0, data: null, message: '네트워크 오류가 발생했습니다.' }
+  }
+  const json = await res.json()
+  return { ok: !!json.ok, status: res.status, data: json.data ?? null, message: json.message ?? null }
+}
+
+// fetchJSON과 동일하지만 data 외 추가 필드(pagination, attempted 등)도 함께 반환
+async function fetchJSONFull(url, options) {
+  let res
+  try {
+    res = await fetch(url, options)
+  } catch {
+    throw Object.assign(new Error('네트워크 오류가 발생했습니다.'), { status: 0 })
+  }
+  const json = await res.json()
+  if (!json.ok) {
+    const err = new Error(json.message || '서버 오류')
+    err.status = res.status
+    throw err
+  }
+  return json
 }
 
 // 카테고리 목록 조회
@@ -24,13 +59,7 @@ export async function getFlyers(category, q, page = 1, limit = 10) {
   if (q && q.trim()) params.set('q', q.trim())
   params.set('page', page)
   params.set('limit', limit)
-  const res = await fetch(`${BASE}/flyers?${params.toString()}`)
-  const json = await res.json()
-  if (!json.ok) {
-    const err = new Error(json.message || '서버 오류')
-    err.status = res.status
-    throw err
-  }
+  const json = await fetchJSONFull(`${BASE}/flyers?${params.toString()}`)
   return { data: json.data, pagination: json.pagination }
 }
 
@@ -42,13 +71,11 @@ export async function getFlyerDetail(id) {
 // 공유 처리 (포인트 적립) — scratchToken으로 서버 검증
 // 중복 공유 시 { ok: false, status: 409 } 반환 (throw 하지 않음)
 export async function shareFlyer(token, flyerId, scratchToken) {
-  const res = await fetch(`${BASE}/share`, {
+  return fetchJSONSafe(`${BASE}/share`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ flyerId, scratchToken }),
   })
-  const data = await res.json()
-  return { ok: res.ok, status: res.status, data: data.data, message: data.message }
 }
 
 // 유저 포인트 조회
@@ -134,11 +161,11 @@ export async function deleteFlyer(token, id) {
 }
 
 // 포인트 사용
-export async function usePoints(userId, amount, description) {
+export async function usePoints(token, amount, description) {
   return fetchJSON(`${BASE}/points/use`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, amount, description }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ amount, description }),
   })
 }
 
@@ -217,6 +244,14 @@ export async function updateNickname(token, nickname) {
   })
 }
 
+// 회원 탈퇴
+export async function deleteAccount(token) {
+  return fetchJSON(`${BASE}/users/me`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
 // ======== 퀴즈 API ========
 
 // 퀴즈 등록 (사업자)
@@ -235,9 +270,7 @@ export async function getQuizzesByFlyer(flyerId) {
 
 // 랜덤 퀴즈 1문제 출제
 export async function getRandomQuiz(flyerId, userId) {
-  const res = await fetch(`${BASE}/flyers/${flyerId}/quiz?userId=${userId}`)
-  const json = await res.json()
-  if (!json.ok) throw new Error(json.message)
+  const json = await fetchJSONFull(`${BASE}/flyers/${flyerId}/quiz?userId=${userId}`)
   return { data: json.data, attempted: json.attempted }
 }
 
@@ -274,13 +307,11 @@ export async function getQrCode(flyerId) {
 
 // QR 스캔 인증
 export async function verifyQrCode(token, qrCode) {
-  const res = await fetch(`${BASE}/qr/verify`, {
+  return fetchJSONSafe(`${BASE}/qr/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ qrCode }),
   })
-  const data = await res.json()
-  return { ok: res.ok, status: res.status, data: data.data, message: data.message }
 }
 
 // 방문 인증 내역
@@ -331,19 +362,7 @@ export async function getChargeHistory(token) {
   })
 }
 
-// ======== 기프티콘 API ========
-
-// 기프티콘 교환 신청 (포인트 차감 + 주문 생성)
-export async function createGiftOrder(token, giftId) {
-  const res = await fetch(`${BASE}/gift-orders`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ giftId }),
-  })
-  const data = await res.json()
-  if (!data.ok) throw new Error(data.message || '서버 오류')
-  return data
-}
+// ======== 기프티콘 교환 API ========
 
 // 기프티콘 주문 내역 조회
 export async function getGiftOrders(token, userId) {
@@ -352,10 +371,11 @@ export async function getGiftOrders(token, userId) {
   })
 }
 
-// ======== 교환 신청 API ========
 
+// 기프티콘 교환 신청
+// 반환: { data: { remainPoints } }
 export async function createExchangeRequest(token, { product_name, product_emoji, points, phone }) {
-  const res = await fetch(`${BASE}/exchange/request`, {
+  const json = await fetchJSONFull(`${BASE}/exchange/request`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -363,15 +383,14 @@ export async function createExchangeRequest(token, { product_name, product_emoji
     },
     body: JSON.stringify({ product_name, product_emoji, points, phone }),
   })
-  const data = await res.json()
-  if (!data.ok) throw new Error(data.message || '서버 오류')
-  return data
+  return { data: json.data }
 }
 
 // ======== 보안 API ========
 
-// 기기 fingerprint 생성
-export function generateDeviceFingerprint() {
+// 기기 fingerprint 생성 (SHA-256, Web Crypto API)
+// 반환: Promise<string> — 64자리 hex 문자열 (하위 호환: 기존 'df_' 접두사 값은 그대로 유지)
+export async function generateDeviceFingerprint() {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   ctx.textBaseline = 'top'
@@ -390,53 +409,50 @@ export function generateDeviceFingerprint() {
     canvasData.slice(-50),
   ].join('|')
 
-  // simple hash
-  let hash = 0
-  for (let i = 0; i < raw.length; i++) {
-    const chr = raw.charCodeAt(i)
-    hash = ((hash << 5) - hash) + chr
-    hash |= 0
-  }
-  return 'df_' + Math.abs(hash).toString(36) + '_' + raw.length.toString(36)
+  // Web Crypto API SHA-256 (브라우저 표준, 충돌 확률 2^-256)
+  const msgBuffer = new TextEncoder().encode(raw)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  const hexHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  return hexHash
 }
 
 // 기기 체크 (회원가입 전)
 export async function checkDevice(fingerprint) {
-  const res = await fetch(`${BASE}/security/device-check`, {
+  const result = await fetchJSONSafe(`${BASE}/security/device-check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fingerprint }),
   })
-  return res.json()
+  return { blocked: !result.ok, message: result.message }
 }
 
 // 기기 등록 (로그인 후)
-export async function registerDevice(userId, fingerprint) {
+export async function registerDevice(token, fingerprint) {
   return fetchJSON(`${BASE}/security/device`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, fingerprint }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ fingerprint }),
   })
 }
 
 // 긁기 세션 시작
-export async function startScratchSession(userId, flyerId) {
+export async function startScratchSession(token, flyerId) {
   return fetchJSON(`${BASE}/scratch/start`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, flyerId }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ flyerId }),
   })
 }
 
 // 긁기 세션 완료
 export async function completeScratchSession(sessionToken, durationMs) {
-  const res = await fetch(`${BASE}/scratch/complete`, {
+  const result = await fetchJSONSafe(`${BASE}/scratch/complete`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionToken, durationMs }),
   })
-  const data = await res.json()
-  return { ok: data.ok, message: data.message, botDetected: data.botDetected, data: data.data }
+  return { ok: result.ok, message: result.message, botDetected: result.status === 403 && !result.ok, data: result.data }
 }
 
 // ======== 출금 API ========
@@ -483,4 +499,20 @@ export async function getInquiryHistory(token, userId) {
 // 앱 버전 확인
 export async function getAppVersion() {
   return fetchJSON(`${BASE}/version`)
+}
+
+// ======== 공개 설정 API ========
+
+// 공개 설정 조회 (인증 불요)
+// 반환: { guest_scratch_limit: '1', scratch_threshold_login: '0.80', scratch_threshold_guest: '0.80', ... }
+export async function getPublicSettings() {
+  return fetchJSON(`${BASE}/settings/public`)
+}
+
+// ======== 기프티콘 상품 API ========
+
+// 기프티콘 상품 목록 조회 (인증 불요)
+// 반환: [{ id, gift_key, emoji, brand, name, points, category }]
+export async function getGiftProducts() {
+  return fetchJSON(`${BASE}/gifts/products`)
 }

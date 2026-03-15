@@ -4,8 +4,7 @@ import { startScratchSession, completeScratchSession } from '../api/index'
 const CARD_W = 340
 const CARD_H = 400
 const BRUSH_RADIUS = 28
-const REVEAL_THRESHOLD_LOGIN = 0.80
-const REVEAL_THRESHOLD_GUEST = 0.80
+const DEFAULT_THRESHOLD = 0.80
 
 function formatPrice(price) {
   if (!price || isNaN(price)) return '0원'
@@ -17,7 +16,7 @@ function getDiscountRate(original, sale) {
   return Math.round((1 - sale / original) * 100)
 }
 
-export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onClose, onGuestReveal }) {
+export default function ScratchCard({ flyer, userId, token, isLoggedIn, onComplete, onClose, onGuestReveal, threshold: thresholdProp }) {
   const canvasRef = useRef(null)
   const isDrawing = useRef(false)
   const [revealed, setRevealed] = useState(false)
@@ -27,17 +26,17 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
   const scratchStartTime = useRef(null)
   const sessionTokenRef = useRef(null)
 
-  const threshold = isLoggedIn ? REVEAL_THRESHOLD_LOGIN : REVEAL_THRESHOLD_GUEST
+  const threshold = (typeof thresholdProp === 'number' && thresholdProp > 0) ? thresholdProp : DEFAULT_THRESHOLD
 
   // 긁기 세션 시작 (로그인 유저만 서버 기록)
   useEffect(() => {
-    if (isLoggedIn && userId && flyer?.id) {
-      startScratchSession(userId, flyer.id)
+    if (isLoggedIn && token && flyer?.id) {
+      startScratchSession(token, flyer.id)
         .then(data => { sessionTokenRef.current = data.sessionToken })
         .catch(() => {})
     }
     scratchStartTime.current = Date.now()
-  }, [userId, flyer?.id, isLoggedIn])
+  }, [token, flyer?.id, isLoggedIn])
 
   // 캔버스에 은박 코팅 그리기
   useEffect(() => {
@@ -125,9 +124,7 @@ export default function ScratchCard({ flyer, userId, isLoggedIn, onComplete, onC
     clearInterval(checkInterval.current)
 
     if (!isLoggedIn) {
-      // 게스트: 서버 저장 안 함, App으로 이벤트 전달
-      localStorage.setItem('guest_scratched', 'true')
-      // 은박이 사라지는 애니메이션 후 모달 표시
+      // 게스트: 서버 저장 안 함, App 콜백으로만 처리
       const timer = setTimeout(() => {
         onGuestReveal && onGuestReveal(flyer)
       }, 800)

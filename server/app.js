@@ -1,3 +1,11 @@
+// 프로세스 레벨 에러 핸들러 — 미처리 예외로 인한 침묵 실패 방지
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[UNHANDLED REJECTION]', reason)
+})
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err)
+})
+
 const isVercel = !!process.env.VERCEL
 
 // 로컬 환경에서만 dotenv 로드 (Vercel은 대시보드 환경변수 사용)
@@ -7,6 +15,7 @@ if (!isVercel) {
 
 const express = require('express')
 const cors = require('cors')
+const cookieParser = require('cookie-parser')
 const path = require('path')
 const rateLimit = require('express-rate-limit')
 
@@ -26,6 +35,7 @@ const inquiryRouter = require('./routes/inquiry')
 const securityRouter = require('./routes/security')
 const exchangeRouter = require('./routes/exchange')
 const withdrawalRouter = require('./routes/withdrawal')
+const settingsRouter = require('./routes/settings')
 
 const app = express()
 
@@ -38,6 +48,7 @@ app.use(cors({
       }
     : (origin, cb) => cb(null, true),
 }))
+app.use(cookieParser())
 app.use(express.json())
 
 // 전역 Rate Limiting (100 req / 15min per IP)
@@ -61,6 +72,18 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter)
 app.use('/api/auth/register', authLimiter)
 app.use('/api/admin/login', authLimiter)
+
+// Vercel 환경: 간단한 커스텀 요청 로깅 미들웨어
+if (isVercel) {
+  app.use((req, res, next) => {
+    const start = Date.now()
+    res.on('finish', () => {
+      const latency = Date.now() - start
+      console.log(`[REQ] ${req.method} ${req.path} ${res.statusCode} ${latency}ms`)
+    })
+    next()
+  })
+}
 
 // 로컬 환경에서만 업로드 정적 서빙 + morgan 로깅 + 디버그 엔드포인트
 if (!isVercel) {
@@ -86,9 +109,16 @@ if (!isVercel) {
   })
 }
 
-// 헬스 체크
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, message: '전단지 서버 정상 동작 중' })
+// 헬스 체크 (DB 연결 확인 포함)
+app.get('/api/health', async (req, res) => {
+  try {
+    const db = require('./db')
+    await db.prepare('SELECT 1').get()
+    res.json({ ok: true, message: '전단지 서버 정상 동작 중' })
+  } catch (err) {
+    console.error('[HEALTH CHECK FAIL]', err.message)
+    res.status(503).json({ ok: false, message: 'DB 연결 실패' })
+  }
 })
 
 // 앱 버전 확인
@@ -122,6 +152,7 @@ app.use('/api/security', securityRouter)
 app.use('/api', securityRouter)
 app.use('/api/exchange', exchangeRouter)
 app.use('/api/withdrawals', withdrawalRouter)
+app.use('/api/settings', settingsRouter)
 
 // 만료 전단지 자동 삭제 (Vercel Cron)
 app.get('/api/cron/cleanup', async (req, res) => {

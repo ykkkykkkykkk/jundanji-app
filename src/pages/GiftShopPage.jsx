@@ -1,22 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { createExchangeRequest, getGiftOrders } from '../api/index'
-
-const CATEGORIES = ['전체', '☕ 카페', '🏪 편의점', '🏬 백화점', '🍗 치킨', '🍕 피자', '🍔 버거', '🍦 디저트', '🥤 음료']
-
-const GIFT_LIST = [
-  { id: 'starbucks_ame', emoji: '☕', brand: '스타벅스', name: '아메리카노 Tall', points: 5000, cat: '☕ 카페' },
-  { id: 'ediya_ame', emoji: '☕', brand: '이디야', name: '아메리카노', points: 3000, cat: '☕ 카페' },
-  { id: 'cu_5000', emoji: '🏪', brand: 'CU', name: '5,000원 금액권', points: 5000, cat: '🏪 편의점' },
-  { id: 'gs25_5000', emoji: '🏬', brand: 'GS25', name: '5,000원 금액권', points: 5000, cat: '🏪 편의점' },
-  { id: 'shinsegae_10000', emoji: '🏬', brand: '신세계', name: '상품권 1만원', points: 10000, cat: '🏬 백화점' },
-  { id: 'lotte_10000', emoji: '🏬', brand: '롯데', name: '상품권 1만원', points: 10000, cat: '🏬 백화점' },
-  { id: 'bbq_gold', emoji: '🍗', brand: 'BBQ', name: '황금올리브', points: 15000, cat: '🍗 치킨' },
-  { id: 'kyochon_honey', emoji: '🍗', brand: '교촌', name: '허니콤보', points: 15000, cat: '🍗 치킨' },
-  { id: 'domino_pizza', emoji: '🍕', brand: '도미노', name: '피자 1판', points: 20000, cat: '🍕 피자' },
-  { id: 'lotteria_set', emoji: '🍔', brand: '롯데리아', name: '세트 메뉴', points: 7000, cat: '🍔 버거' },
-  { id: 'br_pint', emoji: '🍦', brand: '배스킨라빈스', name: '파인트', points: 8000, cat: '🍦 디저트' },
-  { id: 'gongcha_large', emoji: '🥤', brand: '공차', name: '라지 음료', points: 4000, cat: '🥤 음료' },
-]
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { createExchangeRequest, getGiftOrders, getGiftProducts } from '../api/index'
 
 const STATUS_LABELS = {
   pending: '발송 대기',
@@ -33,7 +16,8 @@ function formatPhone(value) {
 }
 
 function isValidPhone(value) {
-  return /^010-\d{4}-\d{4}$/.test(value)
+  const digits = value.replace(/\D/g, '')
+  return /^01[0-9]\d{7,8}$/.test(digits)
 }
 
 export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick, onPointsChange, token }) {
@@ -47,6 +31,45 @@ export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick,
   const [showHistory, setShowHistory] = useState(false)
   const [phone, setPhone] = useState('')
   const [remainPoints, setRemainPoints] = useState(null)
+
+  // 상품 목록 서버 fetch
+  const [products, setProducts] = useState([])
+  const [productsLoading, setProductsLoading] = useState(true)
+  const [productsError, setProductsError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setProductsLoading(true)
+    setProductsError(false)
+    getGiftProducts()
+      .then(data => {
+        if (!cancelled) {
+          setProducts(data)
+          setProductsLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProductsError(true)
+          setProductsLoading(false)
+        }
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  const handleRetryProducts = () => {
+    setProductsLoading(true)
+    setProductsError(false)
+    getGiftProducts()
+      .then(data => { setProducts(data); setProductsLoading(false) })
+      .catch(() => { setProductsError(true); setProductsLoading(false) })
+  }
+
+  // 카테고리 목록: 서버 상품의 category 필드에서 동적 추출
+  const categories = useMemo(() => {
+    const cats = [...new Set(products.map(p => p.category).filter(Boolean))]
+    return ['전체', ...cats]
+  }, [products])
 
   // 드래그 스크롤 (홈 카테고리와 동일)
   const tabsRef = useRef(null)
@@ -72,7 +95,7 @@ export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick,
     if (tabsRef.current) tabsRef.current.style.cursor = 'grab'
   }
 
-  const filtered = cat === '전체' ? GIFT_LIST : GIFT_LIST.filter(g => g.cat === cat)
+  const filtered = cat === '전체' ? products : products.filter(g => g.category === cat)
 
   useEffect(() => {
     if (showHistory && isLoggedIn && userId) {
@@ -143,7 +166,7 @@ export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick,
           onTouchMove={handleDragMove}
           onTouchEnd={handleDragEnd}
         >
-          {CATEGORIES.map(c => (
+          {categories.map(c => (
             <button
               key={c}
               className={`category-tab ${cat === c ? 'active' : ''}`}
@@ -155,28 +178,45 @@ export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick,
 
       {/* 기프티콘 리스트 */}
       <div className="gshop-page-list">
-        {filtered.map(g => {
-          const isSelected = selected?.id === g.id
-          const insufficient = points < g.points
-          return (
-            <div
-              key={g.id}
-              className={`gshop-page-item${isSelected ? ' gshop-page-item-selected' : ''}${insufficient ? ' gshop-page-item-disabled' : ''}`}
-              onClick={() => !insufficient && setSelected(isSelected ? null : g)}
-            >
-              <div className="gshop-page-item-emoji">{g.emoji}</div>
-              <div className="gshop-page-item-info">
-                <div className="gshop-page-item-brand">{g.brand}</div>
-                <div className="gshop-page-item-name">{g.name}</div>
+        {productsLoading ? (
+          <div className="gshop-page-loading">
+            <div className="spinner" />
+            <div style={{ marginTop: 12, fontSize: 14, color: '#999' }}>상품 불러오는 중...</div>
+          </div>
+        ) : productsError ? (
+          <div className="gshop-page-loading">
+            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontSize: 14, color: '#999', marginBottom: 16 }}>상품을 불러오지 못했습니다.</div>
+            <button className="gshop-page-retry-btn" onClick={handleRetryProducts}>다시 시도</button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="gshop-page-loading">
+            <div style={{ fontSize: 14, color: '#999' }}>해당 카테고리에 상품이 없습니다.</div>
+          </div>
+        ) : (
+          filtered.map(g => {
+            const isSelected = selected?.id === g.id
+            const insufficient = points < g.points
+            return (
+              <div
+                key={g.id}
+                className={`gshop-page-item${isSelected ? ' gshop-page-item-selected' : ''}${insufficient ? ' gshop-page-item-disabled' : ''}`}
+                onClick={() => !insufficient && setSelected(isSelected ? null : g)}
+              >
+                <div className="gshop-page-item-emoji">{g.emoji}</div>
+                <div className="gshop-page-item-info">
+                  <div className="gshop-page-item-brand">{g.brand}</div>
+                  <div className="gshop-page-item-name">{g.name}</div>
+                </div>
+                <div className="gshop-page-item-right">
+                  <div className="gshop-page-item-points">{g.points.toLocaleString()}P</div>
+                  {insufficient && <div className="gshop-page-item-lack">포인트 부족</div>}
+                </div>
+                {isSelected && <div className="gshop-page-item-check">✓</div>}
               </div>
-              <div className="gshop-page-item-right">
-                <div className="gshop-page-item-points">{g.points.toLocaleString()}P</div>
-                {insufficient && <div className="gshop-page-item-lack">포인트 부족</div>}
-              </div>
-              {isSelected && <div className="gshop-page-item-check">✓</div>}
-            </div>
-          )
-        })}
+            )
+          })
+        )}
       </div>
 
       {/* 에러 메시지 */}

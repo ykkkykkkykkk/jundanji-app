@@ -159,11 +159,12 @@ router.get('/users/:userId/share-history', authMiddleware, async (req, res) => {
 })
 
 // 포인트 사용 (기프티콘 교환)
-// POST /api/points/use  { userId, amount, description }
-router.post('/points/use', async (req, res) => {
-  const { userId, amount, description } = req.body
-  if (!userId || !amount || amount <= 0) {
-    return res.status(400).json({ ok: false, message: 'userId, amount(양수) 필수입니다.' })
+// POST /api/points/use  { amount, description }
+router.post('/points/use', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+  const { amount, description } = req.body
+  if (!amount || amount <= 0) {
+    return res.status(400).json({ ok: false, message: 'amount(양수) 필수입니다.' })
   }
 
   await db.ensureUser(userId)
@@ -186,7 +187,7 @@ router.post('/points/use', async (req, res) => {
   const giftName = isGift ? description.replace('카카오 기프티콘 - ', '') : null
 
   const useTx = db.transaction(async (txDb) => {
-    await txDb.prepare('UPDATE users SET points = points - ? WHERE id = ?').run(amount, userId)
+    await txDb.prepare('UPDATE users SET points = points - ? WHERE id = ? AND points >= ?').run(amount, userId, amount)
     await txDb.prepare(
       'INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)'
     ).run(userId, amount, 'use', description || '포인트 사용')

@@ -1,6 +1,7 @@
 const { Router } = require('express')
 const crypto = require('crypto')
 const db = require('../db')
+const authMiddleware = require('../middleware/auth')
 
 const router = Router()
 
@@ -9,10 +10,11 @@ const MIN_SCRATCH_DURATION_MS = 3000 // 최소 3초
 
 // 기기 fingerprint 등록 (로그인/회원가입 시 호출)
 // POST /api/security/device
-router.post('/device', async (req, res) => {
-  const { userId, fingerprint } = req.body
-  if (!userId || !fingerprint) {
-    return res.status(400).json({ ok: false, message: 'userId, fingerprint 필수입니다.' })
+router.post('/device', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+  const { fingerprint } = req.body
+  if (!fingerprint) {
+    return res.status(400).json({ ok: false, message: 'fingerprint 필수입니다.' })
   }
 
   try {
@@ -52,17 +54,18 @@ router.post('/device-check', async (req, res) => {
 
 // 긁기 세션 시작
 // POST /api/scratch/start
-router.post('/scratch/start', async (req, res) => {
-  const { userId, flyerId } = req.body
-  if (!userId || !flyerId) {
-    return res.status(400).json({ ok: false, message: 'userId, flyerId 필수입니다.' })
+router.post('/scratch/start', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+  const { flyerId } = req.body
+  if (!flyerId) {
+    return res.status(400).json({ ok: false, message: 'flyerId 필수입니다.' })
   }
 
   const sessionToken = crypto.randomBytes(24).toString('hex')
 
   try {
-    // 기존 세션 삭제 후 새로 생성
-    await db.prepare('DELETE FROM scratch_sessions WHERE user_id = ? AND flyer_id = ?').run(userId, flyerId)
+    // 각 요청마다 독립 세션 생성 (token은 UNIQUE이므로 충돌 없음)
+    // 멀티탭 동시 요청도 각각 독립 세션으로 처리
     await db.prepare(
       'INSERT INTO scratch_sessions (token, user_id, flyer_id) VALUES (?, ?, ?)'
     ).run(sessionToken, userId, flyerId)
@@ -94,13 +97,18 @@ router.post('/scratch/complete', async (req, res) => {
     return res.status(409).json({ ok: false, message: '이미 완료된 세션입니다.' })
   }
 
-  // 서버 시간 기반 duration 검증 (SQLite datetime 포맷 호환)
-  const serverStartTime = new Date(session.started_at.replace(' ', 'T') + '+09:00').getTime()
-  const serverDuration = Number.isNaN(serverStartTime) ? Infinity : Date.now() - serverStartTime
+  // 서버 시간 기반 duration 검증
+  // SQLite는 UTC로 저장하므로 'T'만 붙여 ISO 8601 UTC로 파싱 ('+09:00' 오프셋 제거)
+  const rawStarted = session.started_at
+  const isoStarted = rawStarted.includes('T') ? rawStarted : rawStarted.replace(' ', 'T') + 'Z'
+  const serverStartTime = new Date(isoStarted).getTime()
+  // NaN이면 Infinity로 fallback하여 봇 오판 방지
+  const serverDuration = Number.isNaN(serverStartTime) ? Infinity : Math.max(0, Date.now() - serverStartTime)
   const clientDuration = Number(durationMs) || 0
 
   // 클라이언트 보고 시간과 서버 시간 중 짧은 쪽 기준
-  const actualDuration = Math.min(serverDuration, clientDuration || Infinity)
+  // clientDuration이 0이면 서버 시간만 사용
+  const actualDuration = Math.min(serverDuration, clientDuration > 0 ? clientDuration : Infinity)
 
   if (actualDuration < MIN_SCRATCH_DURATION_MS) {
     // 봇 의심 — 세션 무효 처리

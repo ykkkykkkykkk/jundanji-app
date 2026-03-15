@@ -4,7 +4,7 @@
 - [user_profile.md](user_profile.md) — Developer managing 전단지P Korean flyer app
 
 ## Project
-- [project_state_v42.md](project_state_v42.md) — Current v4.2 state, critical bugs, architecture gaps
+- [project_state_v43.md](project_state_v43.md) — Current v4.3 state, resolved bugs, known issues (replaces v42)
 
 ## Reference
 - [api_endpoint_map.md](api_endpoint_map.md) — Client API functions mapped to server routes
