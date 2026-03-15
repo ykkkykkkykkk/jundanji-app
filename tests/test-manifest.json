@@ -1,0 +1,202 @@
+{
+  "version": "1.0",
+  "project": "전단지P (jundanji-apptech)",
+  "createdDate": "2026-03-15",
+  "description": "Playwright E2E 테스트 스위트",
+  "configuration": {
+    "baseURL": "http://localhost:5173",
+    "browser": "chromium",
+    "headless": true,
+    "webServer": "npm run dev (localhost:5173)"
+  },
+  "testSuites": [
+    {
+      "file": "main-page.spec.ts",
+      "name": "Main Page",
+      "description": "메인 페이지 기본 기능 테스트",
+      "testCount": 8,
+      "features": [
+        "페이지 로드",
+        "전단지 카드 렌더링",
+        "하단 네비게이션",
+        "다크모드 토글"
+      ]
+    },
+    {
+      "file": "auth.spec.ts",
+      "name": "Authentication Flow",
+      "description": "로그인, 로그아웃, OAuth 리다이렉트",
+      "testCount": 8,
+      "features": [
+        "로그인 페이지 진입",
+        "OAuth 리다이렉트 처리",
+        "localStorage 토큰 저장",
+        "로그아웃 및 상태 초기화",
+        "darkMode 보존",
+        "신규 사용자 역할 선택",
+        "에러 처리"
+      ]
+    },
+    {
+      "file": "gift-shop.spec.ts",
+      "name": "Gift Shop Page",
+      "description": "기프티콘 교환소 페이지",
+      "testCount": 7,
+      "features": [
+        "페이지 네비게이션",
+        "상품 목록 표시",
+        "포인트 표시",
+        "상품 구매 버튼",
+        "포인트 부족 에러",
+        "뒤로 가기",
+        "상태 유지"
+      ]
+    },
+    {
+      "file": "mypage.spec.ts",
+      "name": "My Page",
+      "description": "마이페이지 - 사용자 정보, 히스토리",
+      "testCount": 10,
+      "features": [
+        "페이지 네비게이션",
+        "사용자 닉네임 및 포인트 표시",
+        "히스토리 탭 (공유, 퀴즈, 방문)",
+        "닉네임 편집",
+        "로그아웃 버튼",
+        "포인트 히스토리",
+        "북마크 섹션",
+        "로그아웃 처리",
+        "북마크된 전단지 상세 페이지",
+        "비로그인 상태"
+      ]
+    },
+    {
+      "file": "qr-scan.spec.ts",
+      "name": "QR Scan Page",
+      "description": "QR 코드 스캔 - 방문 인증",
+      "testCount": 9,
+      "features": [
+        "페이지 네비게이션",
+        "QR 스캐너 인터페이스",
+        "카메라 권한 요청",
+        "비로그인 사용자 로그인 유도",
+        "뒤로 가기",
+        "사용자 역할 표시 (user/business)",
+        "에러 처리",
+        "안내 메시지",
+        "스캔 히스토리"
+      ]
+    },
+    {
+      "file": "search-filter.spec.ts",
+      "name": "Search and Filter",
+      "description": "검색, 카테고리 필터, 페이지네이션",
+      "testCount": 11,
+      "features": [
+        "검색 입력 필드",
+        "검색 수행",
+        "카테고리 필터",
+        "필터 클리어",
+        "결과 없음 상태",
+        "다중 필터 조합",
+        "스크롤 위치 복구",
+        "무한 스크롤 페이지네이션",
+        "특수문자 검색",
+        "활성 필터 표시"
+      ]
+    },
+    {
+      "file": "scratch-card.spec.ts",
+      "name": "Scratch Card (복권 긁기)",
+      "description": "Canvas 기반 복권 긁기 게임",
+      "testCount": 10,
+      "features": [
+        "모달 열기",
+        "Canvas 렌더링",
+        "마우스 이벤트 긁기",
+        "게스트 사용자 로그인 유도",
+        "긁기 애니메이션",
+        "60% threshold 감지",
+        "완료 메시지",
+        "중복 긁기 방지",
+        "비로그인 메시지"
+      ]
+    },
+    {
+      "file": "detail-page.spec.ts",
+      "name": "Detail Page (상세 페이지)",
+      "description": "전단지 상세 정보 페이지",
+      "testCount": 11,
+      "features": [
+        "페이지 네비게이션",
+        "제목 및 설명 표시",
+        "뒤로 가기 버튼",
+        "북마크 토글",
+        "퀴즈 섹션",
+        "퀴즈 답변",
+        "QR 섹션",
+        "공유 버튼",
+        "퀴즈 섹션 스크롤",
+        "이미지 로딩"
+      ]
+    },
+    {
+      "file": "integration.spec.ts",
+      "name": "Integration Scenarios",
+      "description": "전체 사용 흐름 통합 테스트",
+      "testCount": 10,
+      "features": [
+        "전체 플로우: 보기 → 북마크 → 상세",
+        "모든 페이지 네비게이션",
+        "상태 유지 (로그인, 다크모드)",
+        "빠른 연속 네비게이션",
+        "스크롤 위치 복구",
+        "로그인/로그아웃 전환",
+        "동시 API 호출",
+        "다크모드 토글 지속성",
+        "뒤로 가기 버튼 (브라우저)"
+      ]
+    }
+  ],
+  "summary": {
+    "totalFiles": 8,
+    "totalTests": 74,
+    "estimatedRunTime": "3-5 minutes",
+    "coverage": [
+      "Main Page Navigation",
+      "Authentication & Authorization",
+      "User Profile & History",
+      "Search & Filtering",
+      "Scratch Card Game",
+      "Detail Page & Interactions",
+      "QR Code Scanning",
+      "Gift Shop",
+      "Cross-page Navigation",
+      "State Management"
+    ]
+  },
+  "quickCommands": {
+    "runAll": "npx playwright test",
+    "runHeaded": "npx playwright test --headed",
+    "runDebug": "npx playwright test --debug",
+    "runSingleFile": "npx playwright test tests/main-page.spec.ts",
+    "runByName": "npx playwright test -g 'should load'",
+    "showReport": "npx playwright show-report",
+    "installBrowsers": "npx playwright install"
+  },
+  "prerequisites": {
+    "nodeVersion": "16+",
+    "playwrightVersion": "1.58.2+",
+    "devServer": "http://localhost:5173 (npm run dev)",
+    "browser": "Chromium (자동 설치)"
+  },
+  "notes": [
+    "해시 기반 SPA 라우팅 사용 (#page)",
+    "localStorage를 사용한 테스트 데이터 모킹",
+    "Canvas 스크래치 카드 마우스 이벤트 시뮬레이션",
+    "동적 콘텐츠 로딩으로 인한 대기 시간 포함",
+    "모바일 뷰포트는 별도 설정 필요",
+    "개발 서버와 테스트 서버 분리",
+    "병렬 실행 지원"
+  ]
+}

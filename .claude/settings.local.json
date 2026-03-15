@@ -3,7 +3,23 @@
     "allow": [
       "Bash(cd:*)",
       "Bash(npm search:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(npm run:*)",
+      "Bash(npx vite:*)",
+      "Bash(node:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm rebuild:*)",
+      "Bash(NAPI_RS_FORCE_WASM=1 node ./node_modules/vite/bin/vite.js build 2>&1; echo \"EXIT:$?\")",
+      "Bash(npm install:*)",
+      "Bash(cd server:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(which python3:*)",
+      "Bash(pkill:*)",
+      "Bash(taskkill:*)",
+      "Bash(git add:*)"
     ]
   }
 }
