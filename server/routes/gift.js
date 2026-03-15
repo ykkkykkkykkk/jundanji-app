@@ -1,5 +1,6 @@
 const { Router } = require('express')
 const db = require('../db')
+const authMiddleware = require('../middleware/auth')
 
 const router = Router()
 
@@ -28,8 +29,12 @@ const GIFT_ITEMS = {
 
 // 기프티콘 주문 내역 조회
 // GET /api/users/:userId/gift-orders
-router.get('/users/:userId/gift-orders', async (req, res) => {
+router.get('/users/:userId/gift-orders', authMiddleware, async (req, res) => {
   const { userId } = req.params
+
+  if (req.user.userId !== Number(userId)) {
+    return res.status(403).json({ ok: false, message: '본인의 내역만 조회할 수 있습니다.' })
+  }
 
   await db.ensureUser(userId)
 
@@ -57,10 +62,11 @@ router.get('/gifts', (req, res) => {
 
 // 기프티콘 교환 신청 (포인트 차감 + 주문 생성)
 // POST /api/gift-orders
-router.post('/gift-orders', async (req, res) => {
-  const { userId, giftId } = req.body
+router.post('/gift-orders', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+  const { giftId } = req.body
 
-  if (!userId || !giftId) {
+  if (!giftId) {
     return res.status(400).json({ ok: false, message: '필수 값이 누락되었습니다.' })
   }
 

@@ -115,6 +115,7 @@ export default function App() {
       localStorage.setItem('nickname', decoded)
       localStorage.setItem('role', role)
       if (isNew && !localStorage.getItem('roleSelected')) localStorage.setItem('needRoleSelection', 'true')
+      localStorage.removeItem('guest_scratched')
       window.history.replaceState({}, '', '/')
       return { token, userId: Number(userId), nickname: decoded, role }
     }
@@ -180,12 +181,13 @@ export default function App() {
 
   // 유저 데이터 로드
   useEffect(() => {
+    const token = auth?.token
     Promise.all([
       getUserPoints(userId).catch(() => ({ points: 0, nickname: '홍길동', role: 'user' })),
-      getUserShareHistory(userId).catch(() => []),
-      getUserBookmarks(userId).catch(() => []),
-      getQuizHistory(userId).catch(() => []),
-      getVisitHistory(userId).catch(() => []),
+      token ? getUserShareHistory(token, userId).catch(() => []) : Promise.resolve([]),
+      token ? getUserBookmarks(token, userId).catch(() => []) : Promise.resolve([]),
+      token ? getQuizHistory(token, userId).catch(() => []) : Promise.resolve([]),
+      token ? getVisitHistory(token, userId).catch(() => []) : Promise.resolve([]),
     ]).then(([pointData, historyData, bookmarkData, quizData, visitData]) => {
       setPoints(pointData.points)
       setNickname(auth?.nickname ?? pointData.nickname ?? '홍길동')
@@ -210,6 +212,7 @@ export default function App() {
       setAuth(data)
       setNickname(data.nickname)
       if (data.role) localStorage.setItem('role', data.role)
+      localStorage.removeItem('guest_scratched')
     }
     setShowLogin(false)
     // 로그인 후 대기 중이던 전단지로 이동
@@ -359,7 +362,7 @@ export default function App() {
     setShowPointAnim(true)
     setPoints(total)
     // 퀴즈 히스토리 갱신
-    getQuizHistory(userId).then(setQuizHistory).catch(() => {})
+    if (auth?.token) getQuizHistory(auth.token, userId).then(setQuizHistory).catch(() => {})
   }
 
   const handleQrPointsEarned = (earned, total) => {
@@ -367,7 +370,7 @@ export default function App() {
     setShowPointAnim(true)
     setPoints(total)
     // 방문 히스토리 갱신
-    getVisitHistory(userId).then(setVisitHistory).catch(() => {})
+    if (auth?.token) getVisitHistory(auth.token, userId).then(setVisitHistory).catch(() => {})
   }
 
   const handleNavigate = (target) => {
@@ -417,6 +420,7 @@ export default function App() {
             userRole={userRole}
             onQuizPoints={handleQuizPoints}
             scratchToken={lastScratchToken}
+            token={auth?.token}
           />
         )}
 
@@ -443,6 +447,7 @@ export default function App() {
             onLoginClick={() => setShowLogin(true)}
             onPointsEarned={handleQrPointsEarned}
             onBack={() => setPage('main')}
+            token={auth?.token}
           />
         )}
 
@@ -453,6 +458,7 @@ export default function App() {
             isLoggedIn={!!auth}
             onLoginClick={() => setShowLogin(true)}
             onPointsChange={setPoints}
+            token={auth?.token}
           />
         )}
 

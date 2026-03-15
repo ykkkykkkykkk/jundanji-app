@@ -1,12 +1,17 @@
 const { Router } = require('express')
 const db = require('../db')
+const authMiddleware = require('../middleware/auth')
 
 const router = Router()
 
 // 즐겨찾기 목록 조회 (전단지 전체 정보 포함)
 // GET /api/users/:userId/bookmarks
-router.get('/users/:userId/bookmarks', async (req, res) => {
+router.get('/users/:userId/bookmarks', authMiddleware, async (req, res) => {
   const { userId } = req.params
+
+  if (req.user.userId !== Number(userId)) {
+    return res.status(403).json({ ok: false, message: '본인의 내역만 조회할 수 있습니다.' })
+  }
 
   const rows = await db.prepare(`
     SELECT

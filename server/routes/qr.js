@@ -49,11 +49,12 @@ router.get('/flyers/:flyerId/qr', async (req, res) => {
 
 // QR 스캔 인증
 // POST /api/qr/verify
-router.post('/qr/verify', async (req, res) => {
-  const { userId, qrCode } = req.body
+router.post('/qr/verify', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+  const { qrCode } = req.body
 
-  if (!userId || !qrCode) {
-    return res.status(400).json({ ok: false, message: 'userId, qrCode 필수입니다.' })
+  if (!qrCode) {
+    return res.status(400).json({ ok: false, message: 'qrCode 필수입니다.' })
   }
 
   await db.ensureUser(userId)
@@ -132,8 +133,12 @@ router.post('/qr/verify', async (req, res) => {
 
 // 방문 인증 내역
 // GET /api/users/:userId/visit-history
-router.get('/users/:userId/visit-history', async (req, res) => {
+router.get('/users/:userId/visit-history', authMiddleware, async (req, res) => {
   const { userId } = req.params
+
+  if (req.user.userId !== Number(userId)) {
+    return res.status(403).json({ ok: false, message: '본인의 내역만 조회할 수 있습니다.' })
+  }
 
   const history = await db.prepare(`
     SELECT vv.id, vv.flyer_id, vv.points_earned, vv.verified_at,

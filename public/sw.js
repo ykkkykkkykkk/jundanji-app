@@ -1,4 +1,5 @@
-const CACHE_NAME = 'jundanji-v1'
+const CACHE_VERSION = '__BUILD_TIMESTAMP__'
+const CACHE_NAME = 'jundanji-' + CACHE_VERSION
 const OFFLINE_URL = '/'
 
 // 캐싱할 정적 리소스

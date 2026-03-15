@@ -43,6 +43,8 @@ export default function FlyersPage() {
   useEffect(() => { fetchFlyers() }, [fetchFlyers])
 
   const handleStatusChange = async (id, newStatus) => {
+    const action = newStatus === 'approved' ? '승인' : '차단'
+    if (!window.confirm(`이 전단지를 ${action} 처리하시겠습니까?`)) return
     try {
       await updateFlyerStatus(id, newStatus)
       fetchFlyers()

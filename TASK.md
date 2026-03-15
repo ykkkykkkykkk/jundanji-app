@@ -1,6 +1,60 @@
 # 전단지 앱 - 프로젝트 진행 현황
 
-> 마지막 업데이트: 2026-03-10 (v4.2 기프티콘 교환소 페이지)
+> 마지막 업데이트: 2026-03-15 (v4.3 보안 강화 + 어드민 기능)
+
+---
+
+## v4.3 보안 강화 + 어드민 기능 (2026-03-15) ✅
+
+### 보안 수정
+
+#### API 인증 강화 ✅
+- [x] share/quiz/qr/gift POST에 authMiddleware 추가
+- [x] flyers POST/PUT/DELETE 인증 + 소유자 검증
+- [x] 타인 내역 조회 IDOR 취약점 7개 수정
+- [x] exchange 관리자 엔드포인트 인증 추가
+- [x] scratchToken 로그인 유저 필수화 (게스트 긁기 포인트 적립 차단)
+
+#### 인프라 보안 ✅
+- [x] CORS 프로덕션 origin 제한 (FRONTEND_URL 기준)
+- [x] admin 비밀번호 환경변수화 (`ADMIN_PASSWORD`)
+- [x] debug/env 엔드포인트 로컬 전용으로 이동
+- [x] Rate Limiting — 전역 100req/15m, 인증 5req/15m
+
+### 기능 추가
+
+#### 어드민 기능 ✅
+- [x] 어드민 포인트 수동 조정 UI
+- [x] 어드민 상태 변경 confirm 다이얼로그
+
+#### 출금 기능 ✅
+- [x] 출금 신청 UI + API (MyPage) — 단, 출금 기능은 프로덕션 배포 계획 미포함
+- [x] 어드민 출금 승인/거절 API
+
+#### 앱 버전 관리 ✅
+- [x] SW 캐시 버전 자동화
+- [x] `GET /api/version` 앱 버전 API 추가
+- [x] MyPage에 앱 버전 v4.3 표시
+
+### 개선
+- [x] 씨드 데이터 유효기간 2026.06.30으로 갱신
+- [x] package.json / server/package.json 버전 4.3.0으로 통일
+
+### 파일 변경
+| 파일 | 작업 |
+|------|------|
+| `package.json` | version → 4.3.0 |
+| `server/package.json` | version → 4.3.0 |
+| `server/app.js` | Rate Limiting 추가, /api/version 엔드포인트, debug 로컬 전용 이동, CORS 제한 |
+| `server/routes/share.js` | authMiddleware 추가 |
+| `server/routes/quiz.js` | authMiddleware 추가 |
+| `server/routes/qr.js` | authMiddleware 추가 |
+| `server/routes/gift.js` | authMiddleware 추가 |
+| `server/routes/flyers.js` | 소유자 검증 추가 |
+| `server/routes/exchange.js` | 관리자 인증 추가 |
+| `server/routes/withdrawal.js` | 출금 API |
+| `server/routes/admin.js` | 출금 승인/거절, 포인트 수동 조정 |
+| `src/pages/MyPage.jsx` | 출금 신청 UI, 앱 버전 표시 |
 
 ---
 

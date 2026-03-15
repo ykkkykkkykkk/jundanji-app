@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getUsers, updateUserStatus } from '../api'
+import { getUsers, updateUserStatus, adjustUserPoints } from '../api'
 import DataTable, { Badge, ActionButton, Pagination } from '../components/DataTable'
 
 const columns = [
@@ -10,7 +10,7 @@ const columns = [
   { key: 'points', label: '포인트', width: '100px' },
   { key: 'created_at', label: '가입일', width: '160px' },
   { key: 'status', label: '상태', width: '80px' },
-  { key: 'actions', label: '액션', width: '120px' },
+  { key: 'actions', label: '액션', width: '180px' },
 ]
 
 const roleMap = {
@@ -25,6 +25,12 @@ export default function UsersPage() {
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('')
   const [loading, setLoading] = useState(true)
+
+  // 포인트 조정 모달 상태
+  const [pointModal, setPointModal] = useState(null) // { id, nickname }
+  const [pointAmount, setPointAmount] = useState('')
+  const [pointReason, setPointReason] = useState('')
+  const [pointLoading, setPointLoading] = useState(false)
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -42,6 +48,8 @@ export default function UsersPage() {
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
   const handleStatusChange = async (id, newStatus) => {
+    const action = newStatus === 'suspended' ? '정지' : '활성화'
+    if (!window.confirm(`이 유저를 ${action} 처리하시겠습니까?`)) return
     try {
       await updateUserStatus(id, newStatus)
       fetchUsers()
@@ -54,6 +62,35 @@ export default function UsersPage() {
     e.preventDefault()
     setPage(1)
     fetchUsers()
+  }
+
+  const openPointModal = (user) => {
+    setPointModal({ id: user.id, nickname: user.nickname })
+    setPointAmount('')
+    setPointReason('')
+  }
+
+  const handlePointSubmit = async () => {
+    const amount = Number(pointAmount)
+    if (!amount || isNaN(amount)) {
+      alert('유효한 금액을 입력해주세요.')
+      return
+    }
+    if (!pointReason.trim()) {
+      alert('사유를 입력해주세요.')
+      return
+    }
+    setPointLoading(true)
+    try {
+      await adjustUserPoints(pointModal.id, amount, pointReason.trim())
+      alert('포인트가 조정되었습니다.')
+      setPointModal(null)
+      fetchUsers()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setPointLoading(false)
+    }
   }
 
   return (
@@ -111,21 +148,85 @@ export default function UsersPage() {
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
-                  {user.status === 'active' ? (
-                    <ActionButton variant="danger" onClick={() => handleStatusChange(user.id, 'suspended')}>
-                      정지
+                  <div className="flex gap-1.5">
+                    <ActionButton variant="outline" onClick={() => openPointModal(user)}>
+                      포인트 조정
                     </ActionButton>
-                  ) : (
-                    <ActionButton variant="success" onClick={() => handleStatusChange(user.id, 'active')}>
-                      해제
-                    </ActionButton>
-                  )}
+                    {user.status === 'active' ? (
+                      <ActionButton variant="danger" onClick={() => handleStatusChange(user.id, 'suspended')}>
+                        정지
+                      </ActionButton>
+                    ) : (
+                      <ActionButton variant="success" onClick={() => handleStatusChange(user.id, 'active')}>
+                        해제
+                      </ActionButton>
+                    )}
+                  </div>
                 </td>
               </tr>
             )}
           />
           <Pagination page={page} total={total} limit={20} onChange={setPage} />
         </>
+      )}
+
+      {/* 포인트 조정 모달 */}
+      {pointModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setPointModal(null)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-96 max-w-[90vw] shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              포인트 조정 - {pointModal.nickname}
+            </h3>
+
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                금액 (양수: 지급 / 음수: 차감)
+              </label>
+              <input
+                type="number"
+                value={pointAmount}
+                onChange={e => setPointAmount(e.target.value)}
+                placeholder="예: 100 또는 -50"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                사유
+              </label>
+              <input
+                type="text"
+                value={pointReason}
+                onChange={e => setPointReason(e.target.value)}
+                placeholder="포인트 조정 사유를 입력하세요"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setPointModal(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                onClick={handlePointSubmit}
+                disabled={pointLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-dark cursor-pointer disabled:opacity-50"
+              >
+                {pointLoading ? '처리 중...' : '확인'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

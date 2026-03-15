@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { updateNickname, createInquiry, getInquiryHistory } from '../api/index'
+import { updateNickname, createInquiry, getInquiryHistory, requestWithdrawal, getWithdrawalHistory, getBanks } from '../api/index'
 
 function isExpired(validUntil) {
   const [y, m, d] = validUntil.split('.').map(Number)
@@ -43,6 +43,18 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
   const [showInquiryHistory, setShowInquiryHistory] = useState(false)
   const [expandedInquiry, setExpandedInquiry] = useState(null)
 
+  // 출금 관련 상태
+  const [showWithdrawal, setShowWithdrawal] = useState(false)
+  const [withdrawAmount, setWithdrawAmount] = useState('')
+  const [withdrawBank, setWithdrawBank] = useState('')
+  const [withdrawAccount, setWithdrawAccount] = useState('')
+  const [withdrawHolder, setWithdrawHolder] = useState('')
+  const [withdrawMsg, setWithdrawMsg] = useState('')
+  const [withdrawLoading, setWithdrawLoading] = useState(false)
+  const [withdrawHistory, setWithdrawHistory] = useState([])
+  const [showWithdrawHistory, setShowWithdrawHistory] = useState(false)
+  const [bankList, setBankList] = useState([])
+
   const handleNickSave = async () => {
     if (!nickInput.trim() || nickInput === nickname) { setEditingNick(false); return }
     setNickLoading(true)
@@ -61,9 +73,45 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
   // 문의 내역 로드
   useEffect(() => {
     if (showInquiryHistory && isLoggedIn) {
-      getInquiryHistory(userId).then(setInquiryHistory).catch(() => {})
+      getInquiryHistory(token, userId).then(setInquiryHistory).catch(() => {})
     }
   }, [showInquiryHistory, userId, isLoggedIn])
+
+  // 출금: 은행 목록 + 내역 로드
+  useEffect(() => {
+    if (showWithdrawal && isLoggedIn) {
+      getBanks().then(r => setBankList(r.data || [])).catch(() => {})
+      getWithdrawalHistory(token).then(r => setWithdrawHistory(r.data || [])).catch(() => {})
+    }
+  }, [showWithdrawal, isLoggedIn, token])
+
+  const handleWithdrawSubmit = async () => {
+    if (!withdrawAmount || Number(withdrawAmount) < 1000) { setWithdrawMsg('최소 1,000P 이상 입력해주세요.'); return }
+    if (!withdrawBank) { setWithdrawMsg('은행을 선택해주세요.'); return }
+    if (!withdrawAccount.trim()) { setWithdrawMsg('계좌번호를 입력해주세요.'); return }
+    if (!withdrawHolder.trim()) { setWithdrawMsg('예금주를 입력해주세요.'); return }
+
+    setWithdrawLoading(true)
+    setWithdrawMsg('')
+    try {
+      const res = await requestWithdrawal(token, {
+        amount: Number(withdrawAmount),
+        bankName: withdrawBank,
+        accountNumber: withdrawAccount.trim(),
+        accountHolder: withdrawHolder.trim(),
+      })
+      setWithdrawMsg(res.message || '출금 신청이 완료되었습니다!')
+      setWithdrawAmount('')
+      setWithdrawAccount('')
+      setWithdrawHolder('')
+      onPointsChange?.(points - Number(withdrawAmount))
+      getWithdrawalHistory(token).then(r => setWithdrawHistory(r.data || [])).catch(() => {})
+    } catch (e) {
+      setWithdrawMsg(e.message)
+    } finally {
+      setWithdrawLoading(false)
+    }
+  }
 
   const handleInquirySubmit = async () => {
     if (!inquiryTitle.trim()) { setInquiryMsg('제목을 입력해주세요.'); return }
@@ -77,7 +125,7 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
       setInquiryTitle('')
       setInquiryContent('')
       setInquiryCategory('일반')
-      getInquiryHistory(userId).then(setInquiryHistory).catch(() => {})
+      getInquiryHistory(token, userId).then(setInquiryHistory).catch(() => {})
     } catch (e) {
       setInquiryMsg(e.message)
     } finally {
@@ -218,6 +266,120 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
           </div>
         )}
       </div>
+
+      {/* 출금 신청 */}
+      {isLoggedIn && (
+        <div className="gift-section">
+          <div className="gift-header" onClick={() => { setShowWithdrawal(v => !v); setWithdrawMsg('') }}>
+            <span className="gift-title">💸 출금 신청</span>
+            <span className="gift-arrow">{showWithdrawal ? '▲' : '▼'}</span>
+          </div>
+          {showWithdrawal && (
+            <div className="inquiry-section">
+              <div className="inquiry-form">
+                <div className="inquiry-field">
+                  <label className="inquiry-label">출금 금액 (최소 1,000P)</label>
+                  <input
+                    className="inquiry-input"
+                    type="number"
+                    placeholder="출금할 포인트를 입력하세요"
+                    value={withdrawAmount}
+                    onChange={e => setWithdrawAmount(e.target.value)}
+                    min="1000"
+                    max="500000"
+                  />
+                </div>
+
+                <div className="inquiry-field">
+                  <label className="inquiry-label">은행</label>
+                  <select
+                    className="inquiry-input inquiry-select"
+                    value={withdrawBank}
+                    onChange={e => setWithdrawBank(e.target.value)}
+                  >
+                    <option value="">은행을 선택하세요</option>
+                    {bankList.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+
+                <div className="inquiry-field">
+                  <label className="inquiry-label">계좌번호</label>
+                  <input
+                    className="inquiry-input"
+                    type="text"
+                    placeholder="계좌번호를 입력하세요 (- 없이)"
+                    value={withdrawAccount}
+                    onChange={e => setWithdrawAccount(e.target.value)}
+                  />
+                </div>
+
+                <div className="inquiry-field">
+                  <label className="inquiry-label">예금주</label>
+                  <input
+                    className="inquiry-input"
+                    type="text"
+                    placeholder="예금주명을 입력하세요"
+                    value={withdrawHolder}
+                    onChange={e => setWithdrawHolder(e.target.value)}
+                  />
+                </div>
+
+                {withdrawMsg && (
+                  <p className={`inquiry-msg ${withdrawMsg.includes('완료') ? 'inquiry-msg-ok' : ''}`}>
+                    {withdrawMsg}
+                  </p>
+                )}
+
+                <button
+                  className="inquiry-submit-btn"
+                  onClick={handleWithdrawSubmit}
+                  disabled={withdrawLoading}
+                >
+                  {withdrawLoading ? '신청 중...' : '출금 신청'}
+                </button>
+              </div>
+
+              <div
+                className="inquiry-history-toggle"
+                onClick={() => setShowWithdrawHistory(v => !v)}
+              >
+                {showWithdrawHistory ? '▲ 출금 내역 닫기' : '▼ 출금 내역 보기'}
+              </div>
+
+              {showWithdrawHistory && (
+                <div className="inquiry-history-list">
+                  {withdrawHistory.length === 0 ? (
+                    <div className="empty-history">
+                      <span className="empty-icon">💸</span>
+                      <p className="empty-text">출금 내역이 없습니다.</p>
+                    </div>
+                  ) : (
+                    withdrawHistory.map(w => (
+                      <div key={w.id} className="inquiry-item">
+                        <div className="inquiry-item-header">
+                          <div className="inquiry-item-info">
+                            <span className="inquiry-category-badge">{w.bank_name}</span>
+                            <span className="inquiry-item-title">{Number(w.amount).toLocaleString()}P</span>
+                          </div>
+                          <div className={`inquiry-status ${w.status === 'approved' ? 'inquiry-status-answered' : w.status === 'rejected' ? '' : 'inquiry-status-pending'}`}
+                            style={w.status === 'rejected' ? { background: '#FFEBEE', color: '#D32F2F' } : w.status === 'approved' ? {} : {}}
+                          >
+                            {w.status === 'pending' ? '대기중' : w.status === 'approved' ? '승인' : '거절'}
+                          </div>
+                        </div>
+                        <div className="inquiry-item-date">
+                          {w.created_at}
+                          {w.admin_memo && <span style={{ marginLeft: 8, color: '#888' }}>({w.admin_memo})</span>}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 1:1 문의 */}
       {isLoggedIn && (
@@ -440,6 +602,11 @@ export default function MyPage({ points, nickname, shareHistory, quizHistory = [
             )}
           </>
         )}
+      </div>
+
+      {/* 앱 버전 */}
+      <div style={{ textAlign: 'center', padding: '24px 0 80px', fontSize: 12, color: '#aaa' }}>
+        v4.3
       </div>
     </div>
   )

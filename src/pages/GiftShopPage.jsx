@@ -36,7 +36,7 @@ function isValidPhone(value) {
   return /^010-\d{4}-\d{4}$/.test(value)
 }
 
-export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick, onPointsChange }) {
+export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick, onPointsChange, token }) {
   const [cat, setCat] = useState('전체')
   const [selected, setSelected] = useState(null)
   const [showModal, setShowModal] = useState(false)
@@ -76,7 +76,7 @@ export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick,
 
   useEffect(() => {
     if (showHistory && isLoggedIn && userId) {
-      getGiftOrders(userId).then(setOrders).catch(() => {})
+      getGiftOrders(token, userId).then(setOrders).catch(() => {})
     }
   }, [showHistory, userId, isLoggedIn])
 
@@ -94,7 +94,6 @@ export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick,
     setLoading(true)
     setError('')
     try {
-      const token = localStorage.getItem('token')
       const res = await createExchangeRequest(token, {
         product_name: `${selected.brand} ${selected.name}`,
         product_emoji: selected.emoji,
@@ -107,7 +106,7 @@ export default function GiftShopPage({ points, userId, isLoggedIn, onLoginClick,
       setShowComplete(true)
       setSelected(null)
       setPhone('')
-      if (showHistory) getGiftOrders(userId).then(setOrders).catch(() => {})
+      if (showHistory) getGiftOrders(token, userId).then(setOrders).catch(() => {})
     } catch (e) {
       setError(e.message || '교환 처리 중 오류가 발생했습니다.')
     } finally {

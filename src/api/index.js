@@ -41,11 +41,11 @@ export async function getFlyerDetail(id) {
 
 // 공유 처리 (포인트 적립) — scratchToken으로 서버 검증
 // 중복 공유 시 { ok: false, status: 409 } 반환 (throw 하지 않음)
-export async function shareFlyer(userId, flyerId, scratchToken) {
+export async function shareFlyer(token, flyerId, scratchToken) {
   const res = await fetch(`${BASE}/share`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, flyerId, scratchToken }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ flyerId, scratchToken }),
   })
   const data = await res.json()
   return { ok: res.ok, status: res.status, data: data.data, message: data.message }
@@ -57,8 +57,10 @@ export async function getUserPoints(userId) {
 }
 
 // 유저 공유 내역 조회
-export async function getUserShareHistory(userId) {
-  return fetchJSON(`${BASE}/users/${userId}/share-history`)
+export async function getUserShareHistory(token, userId) {
+  return fetchJSON(`${BASE}/users/${userId}/share-history`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
 }
 
 // 회원가입
@@ -87,7 +89,7 @@ export async function getMe(token) {
 }
 
 // 전단지 등록 (imageFile 옵션)
-export async function createFlyer(data, imageFile) {
+export async function createFlyer(token, data, imageFile) {
   const fd = new FormData()
   fd.append('storeName', data.storeName)
   fd.append('storeEmoji', data.storeEmoji || '🏪')
@@ -100,15 +102,14 @@ export async function createFlyer(data, imageFile) {
   fd.append('validUntil', data.validUntil)
   fd.append('sharePoint', String(data.sharePoint || 10))
   fd.append('qrPoint', String(data.qrPoint || 0))
-  if (data.ownerId) fd.append('ownerId', String(data.ownerId))
   fd.append('tags', JSON.stringify(data.tags || []))
   fd.append('items', JSON.stringify(data.items || []))
   if (imageFile) fd.append('image', imageFile)
-  return fetchJSON(`${BASE}/flyers`, { method: 'POST', body: fd })
+  return fetchJSON(`${BASE}/flyers`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd })
 }
 
 // 전단지 수정 (imageFile 옵션)
-export async function updateFlyer(id, data, imageFile) {
+export async function updateFlyer(token, id, data, imageFile) {
   const fd = new FormData()
   fd.append('storeName', data.storeName)
   fd.append('storeEmoji', data.storeEmoji || '🏪')
@@ -124,12 +125,12 @@ export async function updateFlyer(id, data, imageFile) {
   fd.append('tags', JSON.stringify(data.tags || []))
   fd.append('items', JSON.stringify(data.items || []))
   if (imageFile) fd.append('image', imageFile)
-  return fetchJSON(`${BASE}/flyers/${id}`, { method: 'PUT', body: fd })
+  return fetchJSON(`${BASE}/flyers/${id}`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: fd })
 }
 
 // 전단지 삭제
-export async function deleteFlyer(id) {
-  return fetchJSON(`${BASE}/flyers/${id}`, { method: 'DELETE' })
+export async function deleteFlyer(token, id) {
+  return fetchJSON(`${BASE}/flyers/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
 }
 
 // 포인트 사용
@@ -142,8 +143,10 @@ export async function usePoints(userId, amount, description) {
 }
 
 // 포인트 거래 내역
-export async function getPointHistory(userId) {
-  return fetchJSON(`${BASE}/users/${userId}/point-history`)
+export async function getPointHistory(token, userId) {
+  return fetchJSON(`${BASE}/users/${userId}/point-history`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
 }
 
 // 알림 목록
@@ -181,8 +184,10 @@ export async function deletePushSubscription(endpoint) {
 }
 
 // 즐겨찾기 목록 조회
-export async function getUserBookmarks(userId) {
-  return fetchJSON(`${BASE}/users/${userId}/bookmarks`)
+export async function getUserBookmarks(token, userId) {
+  return fetchJSON(`${BASE}/users/${userId}/bookmarks`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
 }
 
 // 즐겨찾기 추가
@@ -237,17 +242,19 @@ export async function getRandomQuiz(flyerId, userId) {
 }
 
 // 퀴즈 정답 제출
-export async function submitQuizAnswer(userId, flyerId, quizId, answer) {
+export async function submitQuizAnswer(token, flyerId, quizId, answer) {
   return fetchJSON(`${BASE}/quiz/attempt`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, flyerId, quizId, answer }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ flyerId, quizId, answer }),
   })
 }
 
 // 퀴즈 응시 내역
-export async function getQuizHistory(userId) {
-  return fetchJSON(`${BASE}/users/${userId}/quiz-history`)
+export async function getQuizHistory(token, userId) {
+  return fetchJSON(`${BASE}/users/${userId}/quiz-history`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
 }
 
 // ======== QR API ========
@@ -266,19 +273,21 @@ export async function getQrCode(flyerId) {
 }
 
 // QR 스캔 인증
-export async function verifyQrCode(userId, qrCode) {
+export async function verifyQrCode(token, qrCode) {
   const res = await fetch(`${BASE}/qr/verify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, qrCode }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ qrCode }),
   })
   const data = await res.json()
   return { ok: res.ok, status: res.status, data: data.data, message: data.message }
 }
 
 // 방문 인증 내역
-export async function getVisitHistory(userId) {
-  return fetchJSON(`${BASE}/users/${userId}/visit-history`)
+export async function getVisitHistory(token, userId) {
+  return fetchJSON(`${BASE}/users/${userId}/visit-history`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
 }
 
 // ======== 사업자 API ========
@@ -325,11 +334,11 @@ export async function getChargeHistory(token) {
 // ======== 기프티콘 API ========
 
 // 기프티콘 교환 신청 (포인트 차감 + 주문 생성)
-export async function createGiftOrder(userId, giftId) {
+export async function createGiftOrder(token, giftId) {
   const res = await fetch(`${BASE}/gift-orders`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, giftId }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ giftId }),
   })
   const data = await res.json()
   if (!data.ok) throw new Error(data.message || '서버 오류')
@@ -337,8 +346,10 @@ export async function createGiftOrder(userId, giftId) {
 }
 
 // 기프티콘 주문 내역 조회
-export async function getGiftOrders(userId) {
-  return fetchJSON(`${BASE}/users/${userId}/gift-orders`)
+export async function getGiftOrders(token, userId) {
+  return fetchJSON(`${BASE}/users/${userId}/gift-orders`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
 }
 
 // ======== 교환 신청 API ========
@@ -428,6 +439,29 @@ export async function completeScratchSession(sessionToken, durationMs) {
   return { ok: data.ok, message: data.message, botDetected: data.botDetected, data: data.data }
 }
 
+// ======== 출금 API ========
+
+// 출금 신청
+export async function requestWithdrawal(token, { amount, bankName, accountNumber, accountHolder }) {
+  return fetchJSON(`${BASE}/withdrawals`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ amount, bankName, accountNumber, accountHolder }),
+  })
+}
+
+// 출금 내역 조회
+export async function getWithdrawalHistory(token) {
+  return fetchJSON(`${BASE}/withdrawals/history`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+// 은행 목록 조회
+export async function getBanks() {
+  return fetchJSON(`${BASE}/withdrawals/banks`)
+}
+
 // ======== 1:1 문의 API ========
 
 // 문의 등록
@@ -440,6 +474,13 @@ export async function createInquiry(userId, category, title, content) {
 }
 
 // 내 문의 내역 조회
-export async function getInquiryHistory(userId) {
-  return fetchJSON(`${BASE}/users/${userId}/inquiries`)
+export async function getInquiryHistory(token, userId) {
+  return fetchJSON(`${BASE}/users/${userId}/inquiries`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
+// 앱 버전 확인
+export async function getAppVersion() {
+  return fetchJSON(`${BASE}/version`)
 }

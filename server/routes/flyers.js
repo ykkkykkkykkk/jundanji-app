@@ -3,6 +3,7 @@ const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
 const db = require('../db')
+const authMiddleware = require('../middleware/auth')
 const { sendPushToAll } = require('./push')
 
 const router = Router()
@@ -198,9 +199,9 @@ router.get('/:id', async (req, res) => {
 
 // 전단지 등록
 // POST /api/flyers (multipart/form-data)
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', authMiddleware, upload.single('image'), async (req, res) => {
   const { storeName, storeEmoji, storeColor, storeBgColor, category, title, subtitle,
-          validFrom, validUntil, sharePoint, qrPoint, ownerId, tags, items } = req.body
+          validFrom, validUntil, sharePoint, qrPoint, tags, items } = req.body
 
   if (!storeName || !title || !category || !validFrom || !validUntil) {
     if (!isVercel && req.file) fs.unlinkSync(req.file.path)
@@ -217,13 +218,10 @@ router.post('/', upload.single('image'), async (req, res) => {
 
   const imageUrl = req.file ? `/uploads/${req.file.filename}` : null
 
+  // owner_id는 인증된 사용자의 userId로 설정
+  const validOwnerId = req.user.userId
+
   const insertTx = db.transaction(async (txDb) => {
-    // owner_id FK 검증: 유저가 존재하는 경우에만 설정
-    let validOwnerId = null
-    if (ownerId) {
-      const ownerExists = await txDb.prepare('SELECT id FROM users WHERE id = ?').get(Number(ownerId))
-      if (ownerExists) validOwnerId = Number(ownerId)
-    }
 
     const { lastInsertRowid: flyerId } = await txDb.prepare(`
       INSERT INTO flyers (store_name, store_emoji, store_color, store_bg_color, category, title, subtitle,
@@ -272,15 +270,22 @@ router.post('/', upload.single('image'), async (req, res) => {
 
 // 전단지 수정
 // PUT /api/flyers/:id (multipart/form-data)
-router.put('/:id', upload.single('image'), async (req, res) => {
+router.put('/:id', authMiddleware, upload.single('image'), async (req, res) => {
   const { id } = req.params
   const { storeName, storeEmoji, storeColor, storeBgColor, category, title, subtitle,
           validFrom, validUntil, sharePoint, qrPoint, tags, items } = req.body
 
-  const existing = await db.prepare('SELECT id, image_url FROM flyers WHERE id = ?').get(id)
+  const existing = await db.prepare('SELECT id, image_url, owner_id FROM flyers WHERE id = ?').get(id)
   if (!existing) {
     if (!isVercel && req.file) fs.unlinkSync(req.file.path)
     return res.status(404).json({ ok: false, message: '전단지를 찾을 수 없습니다.' })
+  }
+
+  // 소유자 검증 (admin은 모두 가능)
+  const reqUser = await db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.userId)
+  if ((!reqUser || reqUser.role !== 'admin') && existing.owner_id !== req.user.userId) {
+    if (!isVercel && req.file) fs.unlinkSync(req.file.path)
+    return res.status(403).json({ ok: false, message: '본인의 전단지만 수정할 수 있습니다.' })
   }
 
   // 새 이미지가 올라오면 기존 파일 삭제
@@ -322,10 +327,16 @@ router.put('/:id', upload.single('image'), async (req, res) => {
 
 // 전단지 삭제
 // DELETE /api/flyers/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   const { id } = req.params
-  const existing = await db.prepare('SELECT id, image_url FROM flyers WHERE id = ?').get(id)
+  const existing = await db.prepare('SELECT id, image_url, owner_id FROM flyers WHERE id = ?').get(id)
   if (!existing) return res.status(404).json({ ok: false, message: '전단지를 찾을 수 없습니다.' })
+
+  // 소유자 검증 (admin은 모두 가능)
+  const reqUser = await db.prepare('SELECT role FROM users WHERE id = ?').get(req.user.userId)
+  if ((!reqUser || reqUser.role !== 'admin') && existing.owner_id !== req.user.userId) {
+    return res.status(403).json({ ok: false, message: '본인의 전단지만 삭제할 수 있습니다.' })
+  }
 
   // 이미지 파일 삭제 (로컬 환경에서만)
   if (!isVercel && existing.image_url && uploadsDir) {

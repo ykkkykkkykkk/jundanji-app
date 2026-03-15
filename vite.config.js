@@ -2,9 +2,26 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
-import { readFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// 빌드 시 sw.js의 캐시 버전을 자동으로 타임스탬프로 교체
+function swCacheVersionPlugin() {
+  return {
+    name: 'sw-cache-version',
+    writeBundle() {
+      const swPath = resolve(__dirname, 'dist', 'sw.js')
+      try {
+        let content = readFileSync(swPath, 'utf-8')
+        content = content.replace('__BUILD_TIMESTAMP__', Date.now().toString())
+        writeFileSync(swPath, content, 'utf-8')
+      } catch (e) {
+        console.warn('[sw-cache-version] sw.js not found in dist, skipping')
+      }
+    },
+  }
+}
 
 // /admin 요청을 admin.html로 리다이렉트하는 플러그인
 function adminRedirectPlugin() {
@@ -33,6 +50,7 @@ export default defineConfig({
   plugins: [
     adminRedirectPlugin(),
     react(),
+    swCacheVersionPlugin(),
   ],
   build: {
     rollupOptions: {

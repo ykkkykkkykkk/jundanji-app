@@ -130,8 +130,8 @@ export default function AdminPage({ onBack, token, userId }) {
         tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
         items: form.items.map(i => ({ name: i.name, originalPrice: Number(i.originalPrice), salePrice: Number(i.salePrice) })),
       }
-      if (mode === 'create') await createFlyer(payload, imageFile)
-      else await updateFlyer(editId, payload, imageFile)
+      if (mode === 'create') await createFlyer(token, payload, imageFile)
+      else await updateFlyer(token, editId, payload, imageFile)
       setMsg(mode === 'create' ? '등록 완료!' : '수정 완료!')
       loadFlyers()
       loadBizFlyers()
@@ -141,7 +141,7 @@ export default function AdminPage({ onBack, token, userId }) {
 
   const handleDelete = async (flyer) => {
     if (!window.confirm(`"${flyer.storeName} - ${flyer.title}" 을 삭제할까요?`)) return
-    await deleteFlyer(flyer.id)
+    await deleteFlyer(token, flyer.id)
     loadFlyers()
     loadBizFlyers()
   }

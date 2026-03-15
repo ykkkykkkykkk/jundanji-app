@@ -2,7 +2,7 @@ import { useState } from 'react'
 import QrScanner from '../components/QrScanner'
 import { verifyQrCode } from '../api/index'
 
-export default function QrScanPage({ userId, userRole, onPointsEarned, onBack, isLoggedIn, onLoginClick }) {
+export default function QrScanPage({ userId, userRole, onPointsEarned, onBack, isLoggedIn, onLoginClick, token }) {
   const [scanning, setScanning] = useState(true)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
@@ -22,7 +22,7 @@ export default function QrScanPage({ userId, userRole, onPointsEarned, onBack, i
     }
 
     try {
-      const res = await verifyQrCode(userId, qrCode)
+      const res = await verifyQrCode(token, qrCode)
       if (res.ok) {
         setResult(res.data)
         onPointsEarned(res.data.earnedPoints, res.data.totalPoints)

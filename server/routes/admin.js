@@ -4,7 +4,7 @@ const db = require('../db')
 
 const router = express.Router()
 
-const ADMIN_PASSWORD = 'admin1234'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234'
 
 // 토큰 생성
 function generateToken() {
@@ -412,4 +412,92 @@ router.delete('/categories/:id', requireAdmin, async (req, res) => {
   res.json({ ok: true, message: '카테고리가 삭제되었습니다.' })
 })
 
+// ======================== 출금 관리 ========================
+
+router.get('/withdrawals', requireAdmin, async (req, res) => {
+  const { page = 1, limit = 20, status = '' } = req.query
+  const offset = (page - 1) * limit
+
+  let where = 'WHERE 1=1'
+  const params = []
+
+  if (status) {
+    where += ' AND w.status = ?'
+    params.push(status)
+  }
+
+  try {
+    const totalRow = await db.prepare(`SELECT COUNT(*) as count FROM withdrawals w ${where}`).get(...params)
+    const total = totalRow.count
+
+    const withdrawals = await db.prepare(`
+      SELECT w.*, u.nickname
+      FROM withdrawals w
+      JOIN users u ON w.user_id = u.id
+      ${where}
+      ORDER BY w.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(...params, Number(limit), Number(offset))
+
+    res.json({ ok: true, withdrawals, total, page: Number(page), limit: Number(limit) })
+  } catch (err) {
+    console.error('[출금 목록 조회 오류]', err.message)
+    res.status(500).json({ ok: false, message: '출금 목록 조회 중 오류가 발생했습니다.' })
+  }
+})
+
+router.post('/withdrawals/:id/approve', requireAdmin, async (req, res) => {
+  const { id } = req.params
+
+  try {
+    const withdrawal = await db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(Number(id))
+    if (!withdrawal) {
+      return res.status(404).json({ ok: false, message: '출금 요청을 찾을 수 없습니다.' })
+    }
+    if (withdrawal.status !== 'pending') {
+      return res.status(400).json({ ok: false, message: '이미 처리된 출금 요청입니다.' })
+    }
+
+    const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).replace('T', ' ')
+    await db.prepare(
+      "UPDATE withdrawals SET status = 'approved', processed_at = ? WHERE id = ?"
+    ).run(now, Number(id))
+
+    res.json({ ok: true, message: '출금이 승인되었습니다.' })
+  } catch (err) {
+    console.error('[출금 승인 오류]', err.message)
+    res.status(500).json({ ok: false, message: '출금 승인 중 오류가 발생했습니다.' })
+  }
+})
+
+router.post('/withdrawals/:id/reject', requireAdmin, async (req, res) => {
+  const { id } = req.params
+  const { admin_memo } = req.body
+
+  try {
+    const withdrawal = await db.prepare('SELECT * FROM withdrawals WHERE id = ?').get(Number(id))
+    if (!withdrawal) {
+      return res.status(404).json({ ok: false, message: '출금 요청을 찾을 수 없습니다.' })
+    }
+    if (withdrawal.status !== 'pending') {
+      return res.status(400).json({ ok: false, message: '이미 처리된 출금 요청입니다.' })
+    }
+
+    const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).replace('T', ' ')
+
+    // 거절 시 포인트 환불
+    await db.batch([
+      { sql: "UPDATE withdrawals SET status = 'rejected', processed_at = ?, admin_memo = ? WHERE id = ?", args: [now, admin_memo || null, Number(id)] },
+      { sql: 'UPDATE users SET points = points + ? WHERE id = ?', args: [withdrawal.amount, withdrawal.user_id] },
+      { sql: "INSERT INTO point_transactions (user_id, amount, type, description) VALUES (?, ?, 'earn', '출금 거절 환불')", args: [withdrawal.user_id, withdrawal.amount] },
+    ])
+
+    res.json({ ok: true, message: '출금이 거절되었습니다. 포인트가 환불되었습니다.' })
+  } catch (err) {
+    console.error('[출금 거절 오류]', err.message)
+    res.status(500).json({ ok: false, message: '출금 거절 중 오류가 발생했습니다.' })
+  }
+})
+
 module.exports = router
+module.exports.activeTokens = activeTokens

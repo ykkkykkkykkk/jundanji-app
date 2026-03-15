@@ -36,6 +36,8 @@ export default function BusinessPage() {
   useEffect(() => { fetchBusinesses() }, [fetchBusinesses])
 
   const handleApprove = async (id, approved) => {
+    const action = approved ? '승인' : '거절'
+    if (!window.confirm(`이 사업자를 ${action} 처리하시겠습니까?`)) return
     try {
       await approveBusiness(id, approved)
       fetchBusinesses()

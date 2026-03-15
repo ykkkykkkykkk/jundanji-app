@@ -4,6 +4,16 @@ const authMiddleware = require('../middleware/auth')
 
 const router = Router()
 
+// 관리자 인증 미들웨어 (admin.js의 activeTokens를 참조)
+function requireAdmin(req, res, next) {
+  const adminModule = require('./admin')
+  const token = req.headers['x-admin-token']
+  if (!token || !adminModule.activeTokens || !adminModule.activeTokens.has(token)) {
+    return res.status(401).json({ ok: false, message: '관리자 인증이 필요합니다.' })
+  }
+  next()
+}
+
 // 교환 신청
 // POST /api/exchange/request
 router.post('/request', authMiddleware, async (req, res) => {
@@ -48,7 +58,7 @@ router.post('/request', authMiddleware, async (req, res) => {
 
 // 관리자용 - 전체 교환 요청 목록
 // GET /api/exchange/requests
-router.get('/requests', async (req, res) => {
+router.get('/requests', requireAdmin, async (req, res) => {
   const rows = await db.prepare(`
     SELECT id, user_id, product_name, product_emoji, points, phone, status, created_at, sent_at
     FROM exchange_requests
@@ -60,7 +70,7 @@ router.get('/requests', async (req, res) => {
 
 // 관리자용 - 교환 완료 처리
 // POST /api/exchange/complete/:id
-router.post('/complete/:id', async (req, res) => {
+router.post('/complete/:id', requireAdmin, async (req, res) => {
   const { id } = req.params
 
   const row = await db.prepare('SELECT id, status FROM exchange_requests WHERE id = ?').get(Number(id))

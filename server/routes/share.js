@@ -1,16 +1,23 @@
 const { Router } = require('express')
 const db = require('../db')
+const authMiddleware = require('../middleware/auth')
 
 const router = Router()
 
 // 공유 처리 (포인트 적립) — 포인트는 서버에서만 결정
 // POST /api/share
 // body: { userId, flyerId, scratchToken }
-router.post('/share', async (req, res) => {
-  const { userId, flyerId, scratchToken } = req.body
+router.post('/share', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+  const { flyerId, scratchToken } = req.body
 
   if (!userId || !flyerId) {
     return res.status(400).json({ ok: false, message: 'userId, flyerId 필수입니다.' })
+  }
+
+  // 로그인 유저(게스트 아닌 경우)는 scratchToken 필수
+  if (userId !== 1 && !scratchToken) {
+    return res.status(400).json({ ok: false, message: '긁기 인증 토큰이 필요합니다.' })
   }
 
   // 긁기 세션 토큰 검증 (서버에서 유효한 긁기를 완료했는지 확인)
@@ -120,8 +127,12 @@ router.get('/users/:userId/points', async (req, res) => {
 
 // 유저 공유 내역 조회
 // GET /api/users/:userId/share-history
-router.get('/users/:userId/share-history', async (req, res) => {
+router.get('/users/:userId/share-history', authMiddleware, async (req, res) => {
   const { userId } = req.params
+
+  if (req.user.userId !== Number(userId)) {
+    return res.status(403).json({ ok: false, message: '본인의 내역만 조회할 수 있습니다.' })
+  }
 
   const history = await db.prepare(`
     SELECT
@@ -199,8 +210,12 @@ router.post('/points/use', async (req, res) => {
 
 // 포인트 거래 내역
 // GET /api/users/:userId/point-history
-router.get('/users/:userId/point-history', async (req, res) => {
+router.get('/users/:userId/point-history', authMiddleware, async (req, res) => {
   const { userId } = req.params
+
+  if (req.user.userId !== Number(userId)) {
+    return res.status(403).json({ ok: false, message: '본인의 내역만 조회할 수 있습니다.' })
+  }
   const history = await db.prepare(`
     SELECT id, amount, type, description, created_at
     FROM point_transactions

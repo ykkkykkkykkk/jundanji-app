@@ -116,10 +116,11 @@ router.get('/flyers/:flyerId/quiz', async (req, res) => {
 
 // 퀴즈 정답 제출
 // POST /api/quiz/attempt
-router.post('/quiz/attempt', async (req, res) => {
-  const { userId, flyerId, quizId, answer } = req.body
+router.post('/quiz/attempt', authMiddleware, async (req, res) => {
+  const userId = req.user.userId
+  const { flyerId, quizId, answer } = req.body
 
-  if (!userId || !flyerId || !quizId || !answer) {
+  if (!flyerId || !quizId || !answer) {
     return res.status(400).json({ ok: false, message: '필수 항목이 누락되었습니다.' })
   }
 
@@ -198,8 +199,12 @@ router.post('/quiz/attempt', async (req, res) => {
 
 // 퀴즈 응시 내역
 // GET /api/users/:userId/quiz-history
-router.get('/users/:userId/quiz-history', async (req, res) => {
+router.get('/users/:userId/quiz-history', authMiddleware, async (req, res) => {
   const { userId } = req.params
+
+  if (req.user.userId !== Number(userId)) {
+    return res.status(403).json({ ok: false, message: '본인의 내역만 조회할 수 있습니다.' })
+  }
 
   const history = await db.prepare(`
     SELECT qa.id, qa.flyer_id, qa.quiz_id, qa.is_correct,

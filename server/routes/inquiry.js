@@ -1,5 +1,6 @@
 const { Router } = require('express')
 const db = require('../db')
+const authMiddleware = require('../middleware/auth')
 
 const router = Router()
 
@@ -45,8 +46,12 @@ router.post('/inquiries', async (req, res) => {
 
 // 내 문의 내역 조회
 // GET /api/users/:userId/inquiries
-router.get('/users/:userId/inquiries', async (req, res) => {
+router.get('/users/:userId/inquiries', authMiddleware, async (req, res) => {
   const { userId } = req.params
+
+  if (req.user.userId !== Number(userId)) {
+    return res.status(403).json({ ok: false, message: '본인의 내역만 조회할 수 있습니다.' })
+  }
 
   await db.ensureUser(userId)
 

@@ -190,6 +190,19 @@ const schemaSQL = `
     UNIQUE(user_id, flyer_id)
   );
 
+  CREATE TABLE IF NOT EXISTS withdrawals (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount          INTEGER NOT NULL,
+    bank_name       TEXT NOT NULL,
+    account_number  TEXT NOT NULL,
+    account_holder  TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'pending',
+    admin_memo      TEXT,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    processed_at    TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS exchange_requests (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id     TEXT NOT NULL,
@@ -231,7 +244,7 @@ const flyerSeed = [
   {
     storeName: '이마트', storeEmoji: '🛒', storeColor: '#FFB800', storeBgColor: '#FFFBEA',
     category: '마트', title: '주말 특가 전단지', subtitle: '신선식품·가공식품 최대 50% 할인',
-    validFrom: '2026.02.21', validUntil: '2026.03.06', sharePoint: 50, shareCount: 12341,
+    validFrom: '2026.02.21', validUntil: '2026.06.30', sharePoint: 50, shareCount: 12341,
     tags: ['신선식품', '음료', '라면'],
     items: [
       { name: '한우 1등급 불고기 200g', originalPrice: 35000, salePrice: 22000 },
@@ -244,7 +257,7 @@ const flyerSeed = [
   {
     storeName: '롯데마트', storeEmoji: '🏪', storeColor: '#E60012', storeBgColor: '#FFF0F0',
     category: '마트', title: '봄맞이 생활용품 대전', subtitle: '주방·가전 특별 할인 행사',
-    validFrom: '2026.02.20', validUntil: '2026.03.05', sharePoint: 80, shareCount: 8876,
+    validFrom: '2026.02.20', validUntil: '2026.06.30', sharePoint: 80, shareCount: 8876,
     tags: ['가전', '주방', '생필품'],
     items: [
       { name: '삼성 에어프라이어 5.3L', originalPrice: 89000, salePrice: 59000 },
@@ -256,7 +269,7 @@ const flyerSeed = [
   {
     storeName: '홈플러스', storeEmoji: '🐟', storeColor: '#1565C0', storeBgColor: '#EEF5FF',
     category: '마트', title: '신선 해산물 특가', subtitle: '산지직송 해산물 파격 할인',
-    validFrom: '2026.02.21', validUntil: '2026.03.09', sharePoint: 70, shareCount: 11109,
+    validFrom: '2026.02.21', validUntil: '2026.06.30', sharePoint: 70, shareCount: 11109,
     tags: ['해산물', '신선식품', '산지직송'],
     items: [
       { name: '노르웨이 생연어 300g', originalPrice: 22000, salePrice: 13200 },
@@ -268,7 +281,7 @@ const flyerSeed = [
   {
     storeName: '코스트코', storeEmoji: '🏭', storeColor: '#E31937', storeBgColor: '#FFF0F2',
     category: '마트', title: '회원 전용 초특가', subtitle: '대용량 식품·생활용품 최저가 도전',
-    validFrom: '2026.02.23', validUntil: '2026.03.08', sharePoint: 100, shareCount: 18234,
+    validFrom: '2026.02.23', validUntil: '2026.06.30', sharePoint: 100, shareCount: 18234,
     tags: ['대용량', '수입식품', '회원전용'],
     items: [
       { name: '커클랜드 견과류 믹스 1.13kg', originalPrice: 25900, salePrice: 17900 },
@@ -280,7 +293,7 @@ const flyerSeed = [
   {
     storeName: '노브랜드', storeEmoji: '🛍️', storeColor: '#FFD700', storeBgColor: '#FFFDE7',
     category: '마트', title: '알뜰 장보기 특집', subtitle: '가성비 최고 생필품 모음전',
-    validFrom: '2026.02.22', validUntil: '2026.03.07', sharePoint: 30, shareCount: 11234,
+    validFrom: '2026.02.22', validUntil: '2026.06.30', sharePoint: 30, shareCount: 11234,
     tags: ['가성비', '생필품', '알뜰'],
     items: [
       { name: '노브랜드 우유 1L 2팩', originalPrice: 4500, salePrice: 2990 },
@@ -293,7 +306,7 @@ const flyerSeed = [
   {
     storeName: 'GS25', storeEmoji: '🏬', storeColor: '#0078D4', storeBgColor: '#EFF6FF',
     category: '편의점', title: '2+1 행사 특집', subtitle: '인기 간식·음료 2+1 이벤트',
-    validFrom: '2026.02.21', validUntil: '2026.03.05', sharePoint: 30, shareCount: 15102,
+    validFrom: '2026.02.21', validUntil: '2026.06.30', sharePoint: 30, shareCount: 15102,
     tags: ['2+1', '도시락', '간식'],
     items: [
       { name: '삼각김밥 참치마요', originalPrice: 1500, salePrice: 1000 },
@@ -305,7 +318,7 @@ const flyerSeed = [
   {
     storeName: 'CU', storeEmoji: '🏪', storeColor: '#7B3FA1', storeBgColor: '#F8F0FF',
     category: '편의점', title: '2월 신상품 기획전', subtitle: '이달의 신제품 20% 할인',
-    validFrom: '2026.02.01', validUntil: '2026.02.28', sharePoint: 30, shareCount: 9654,
+    validFrom: '2026.02.01', validUntil: '2026.06.30', sharePoint: 30, shareCount: 9654,
     tags: ['신상품', '도시락', '할인'],
     items: [
       { name: 'CU 불닭볶음면 도시락 신상', originalPrice: 5400, salePrice: 4320 },
@@ -317,7 +330,7 @@ const flyerSeed = [
   {
     storeName: '세븐일레븐', storeEmoji: '🏪', storeColor: '#008348', storeBgColor: '#F0FFF5',
     category: '편의점', title: '도시락 페스티벌', subtitle: '인기 도시락 1+1 및 할인 행사',
-    validFrom: '2026.02.21', validUntil: '2026.03.06', sharePoint: 35, shareCount: 7654,
+    validFrom: '2026.02.21', validUntil: '2026.06.30', sharePoint: 35, shareCount: 7654,
     tags: ['도시락', '1+1', '편의점'],
     items: [
       { name: '한우 불고기 도시락', originalPrice: 5900, salePrice: 4200 },
@@ -342,7 +355,7 @@ const flyerSeed = [
   {
     storeName: '배스킨라빈스', storeEmoji: '🍦', storeColor: '#FF1493', storeBgColor: '#FFF0F8',
     category: '카페', title: '이달의 맛 출시 기념', subtitle: '파인트 사이즈 30% 할인',
-    validFrom: '2026.02.21', validUntil: '2026.03.05', sharePoint: 25, shareCount: 19876,
+    validFrom: '2026.02.21', validUntil: '2026.06.30', sharePoint: 25, shareCount: 19876,
     tags: ['아이스크림', '이달의맛', '할인'],
     items: [
       { name: '파인트 (레귤러)', originalPrice: 8900, salePrice: 6230 },
@@ -354,7 +367,7 @@ const flyerSeed = [
   {
     storeName: '이디야커피', storeEmoji: '☕', storeColor: '#003478', storeBgColor: '#F0F4FF',
     category: '카페', title: '아메리카노 페스티벌', subtitle: '아메리카노 전 사이즈 1,000원 할인',
-    validFrom: '2026.02.23', validUntil: '2026.03.09', sharePoint: 20, shareCount: 8765,
+    validFrom: '2026.02.23', validUntil: '2026.06.30', sharePoint: 20, shareCount: 8765,
     tags: ['커피', '할인', '아메리카노'],
     items: [
       { name: '아메리카노 (Regular)', originalPrice: 3400, salePrice: 2400 },
@@ -367,7 +380,7 @@ const flyerSeed = [
   {
     storeName: '올리브영', storeEmoji: '💄', storeColor: '#00A651', storeBgColor: '#F0FFF6',
     category: '뷰티', title: '봄 뷰티 페스타', subtitle: '스킨케어·메이크업 최대 40% 할인',
-    validFrom: '2026.02.21', validUntil: '2026.03.08', sharePoint: 60, shareCount: 21521,
+    validFrom: '2026.02.21', validUntil: '2026.06.30', sharePoint: 60, shareCount: 21521,
     tags: ['스킨케어', '메이크업', '특가'],
     items: [
       { name: '라운드랩 자작나무 토너 200ml', originalPrice: 18000, salePrice: 10800 },
@@ -405,7 +418,7 @@ const flyerSeed = [
   {
     storeName: '버거킹', storeEmoji: '🍔', storeColor: '#FF8C00', storeBgColor: '#FFF8F0',
     category: '음식점', title: '와퍼 세트 특가', subtitle: '인기 세트 메뉴 최대 2,000원 할인',
-    validFrom: '2026.02.21', validUntil: '2026.03.10', sharePoint: 35, shareCount: 22345,
+    validFrom: '2026.02.21', validUntil: '2026.06.30', sharePoint: 35, shareCount: 22345,
     tags: ['버거', '세트', '할인'],
     items: [
       { name: '와퍼 세트', originalPrice: 9900, salePrice: 7900 },
@@ -418,7 +431,7 @@ const flyerSeed = [
   {
     storeName: '무신사', storeEmoji: '👕', storeColor: '#000000', storeBgColor: '#F5F5F5',
     category: '패션', title: '봄 신상 세일', subtitle: '인기 브랜드 최대 70% OFF',
-    validFrom: '2026.02.21', validUntil: '2026.03.10', sharePoint: 50, shareCount: 28901,
+    validFrom: '2026.02.21', validUntil: '2026.06.30', sharePoint: 50, shareCount: 28901,
     tags: ['패션', '봄신상', '할인'],
     items: [
       { name: '디스이즈네버댓 반팔 티셔츠', originalPrice: 39000, salePrice: 23400 },
@@ -456,7 +469,7 @@ const flyerSeed = [
   {
     storeName: '쿠팡', storeEmoji: '🚀', storeColor: '#F57508', storeBgColor: '#FFF8F0',
     category: '온라인', title: '로켓배송 초특가', subtitle: '로켓배송 인기상품 한정 특가',
-    validFrom: '2026.02.22', validUntil: '2026.02.28', sharePoint: 60, shareCount: 45123,
+    validFrom: '2026.02.22', validUntil: '2026.06.30', sharePoint: 60, shareCount: 45123,
     tags: ['로켓배송', '한정특가', '생필품'],
     items: [
       { name: '곰곰 무항생제 달걀 30구', originalPrice: 8900, salePrice: 5900 },

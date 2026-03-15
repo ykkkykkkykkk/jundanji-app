@@ -15,7 +15,7 @@ function isExpired(validUntil) {
   return new Date(y, m - 1, d + 1) <= new Date()
 }
 
-export default function DetailPage({ flyer, onBack, isBookmarked, onBookmarkToggle, userId, userRole, onQuizPoints }) {
+export default function DetailPage({ flyer, onBack, isBookmarked, onBookmarkToggle, userId, userRole, onQuizPoints, token }) {
   const expired = isExpired(flyer.validUntil)
   const [quiz, setQuiz] = useState(null)
   const [showQuiz, setShowQuiz] = useState(false)
@@ -36,7 +36,7 @@ export default function DetailPage({ flyer, onBack, isBookmarked, onBookmarkTogg
 
   const handleQuizAnswer = async (answer) => {
     try {
-      const result = await submitQuizAnswer(userId, flyer.id, quiz.quizId, answer)
+      const result = await submitQuizAnswer(token, flyer.id, quiz.quizId, answer)
       setQuizResult(result)
       if (result.isCorrect && onQuizPoints) {
         onQuizPoints(result.earnedPoints, result.totalPoints)

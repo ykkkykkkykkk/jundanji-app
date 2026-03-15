@@ -59,6 +59,8 @@ export const getUsers = (params = {}) => {
 }
 export const updateUserStatus = (id, status) =>
   request(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+export const adjustUserPoints = (id, amount, reason) =>
+  request(`/users/${id}/points`, { method: 'POST', body: JSON.stringify({ amount, reason }) })
 
 // 기프티콘 주문
 export const getGiftOrders = (params = {}) => {
