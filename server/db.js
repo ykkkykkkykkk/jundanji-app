@@ -591,10 +591,10 @@ async function initialize() {
     } catch (_) {}
   }
 
-  // 3. 시드 데이터 (비어있을 때만)
+  // 3. 더미 시드 데이터 (로컬 개발 전용 — ENABLE_SEED_DATA=true 일 때만)
+  const SEED_ENABLED = process.env.ENABLE_SEED_DATA === 'true'
   const count = await db.prepare('SELECT COUNT(*) as cnt FROM flyers').get()
-  if (!count || count.cnt === 0) {
-    // 전단지 + 아이템 시드 (lastInsertRowid 필요 → 트랜잭션)
+  if (SEED_ENABLED && (!count || count.cnt === 0)) {
     const seedTx = db.transaction(async (txDb) => {
       for (const f of flyerSeed) {
         const { lastInsertRowid: flyerId } = await txDb.prepare(`
@@ -613,19 +613,16 @@ async function initialize() {
         }
       }
 
-      // 기본 게스트 유저 생성
       await txDb.prepare(`
-        INSERT OR IGNORE INTO users (id, nickname, points) VALUES (1, '홍길동', 0)
+        INSERT OR IGNORE INTO users (id, nickname, points) VALUES (1, '게스트', 0)
       `).run()
     })
     await seedTx()
 
-    // 알림 시드
     for (const n of notificationSeed) {
       await db.prepare('INSERT INTO notifications (title, body, emoji) VALUES (?, ?, ?)').run(n.title, n.body, n.emoji)
     }
 
-    // 퀴즈 시드
     for (let idx = 0; idx < quizSeed.length; idx++) {
       const q = quizSeed[idx]
       await db.prepare(`
@@ -634,48 +631,7 @@ async function initialize() {
       `).run(q.flyerId, q.question, q.answer, q.point, idx % 3)
     }
 
-    // 카테고리 시드
-    const categorySeed = ['마트', '편의점', '카페', '음식점', '패션', '뷰티', '가전', '온라인', '엔터', '생활용품', '운동']
-    for (let i = 0; i < categorySeed.length; i++) {
-      await db.prepare('INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, ?)').run(categorySeed[i], i)
-    }
-
-    // system_settings 시드
-    const settingsSeed = [
-      ['guest_scratch_limit', '1', '비로그인 게스트 긁기 허용 횟수'],
-      ['withdrawal_min_amount', '1000', '출금 최소 포인트'],
-      ['withdrawal_max_amount', '500000', '출금 최대 포인트'],
-      ['withdrawal_waiting_days', '7', '가입 후 출금 가능 대기일수'],
-      ['scratch_threshold_login', '0.80', '로그인 유저 긁기 공개 임계값'],
-      ['scratch_threshold_guest', '0.80', '게스트 유저 긁기 공개 임계값'],
-    ]
-    for (const [key, value, description] of settingsSeed) {
-      await db.prepare('INSERT OR IGNORE INTO system_settings (key, value, description) VALUES (?, ?, ?)').run(key, value, description)
-    }
-
-    // gift_products 시드
-    const giftProductsSeed = [
-      { giftKey: 'starbucks_ame', emoji: '☕', brand: '스타벅스', name: '아메리카노 Tall', points: 5000, category: '☕ 카페' },
-      { giftKey: 'ediya_ame', emoji: '☕', brand: '이디야', name: '아메리카노', points: 3000, category: '☕ 카페' },
-      { giftKey: 'cu_5000', emoji: '🏪', brand: 'CU', name: '5,000원 금액권', points: 5000, category: '🏪 편의점' },
-      { giftKey: 'gs25_5000', emoji: '🏬', brand: 'GS25', name: '5,000원 금액권', points: 5000, category: '🏪 편의점' },
-      { giftKey: 'shinsegae_10000', emoji: '🏬', brand: '신세계', name: '상품권 1만원', points: 10000, category: '🏬 백화점' },
-      { giftKey: 'lotte_10000', emoji: '🏬', brand: '롯데', name: '상품권 1만원', points: 10000, category: '🏬 백화점' },
-      { giftKey: 'bbq_gold', emoji: '🍗', brand: 'BBQ', name: '황금올리브', points: 15000, category: '🍗 치킨' },
-      { giftKey: 'kyochon_honey', emoji: '🍗', brand: '교촌', name: '허니콤보', points: 15000, category: '🍗 치킨' },
-      { giftKey: 'domino_pizza', emoji: '🍕', brand: '도미노', name: '피자 1판', points: 20000, category: '🍕 피자' },
-      { giftKey: 'lotteria_set', emoji: '🍔', brand: '롯데리아', name: '세트 메뉴', points: 7000, category: '🍔 버거' },
-      { giftKey: 'br_pint', emoji: '🍦', brand: '배스킨라빈스', name: '파인트', points: 8000, category: '🍦 디저트' },
-      { giftKey: 'gongcha_large', emoji: '🥤', brand: '공차', name: '라지 음료', points: 4000, category: '🥤 음료' },
-    ]
-    for (let i = 0; i < giftProductsSeed.length; i++) {
-      const g = giftProductsSeed[i]
-      await db.prepare(
-        'INSERT OR IGNORE INTO gift_products (gift_key, emoji, brand, name, points, category, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      ).run(g.giftKey, g.emoji, g.brand, g.name, g.points, g.category, i)
-    }
-
-    console.log('[DB] 시드 데이터 삽입 완료 (전단지 20개, 알림 5개, 퀴즈 9개, 카테고리 11개, 설정 6개, 기프티콘 12개)')
+    console.log('[DB] 개발용 더미 시드 삽입 완료 (전단지/알림/퀴즈)')
   }
 
   // 3.5 카테고리 테이블이 비어있으면 시드 (기존 DB 마이그레이션)
