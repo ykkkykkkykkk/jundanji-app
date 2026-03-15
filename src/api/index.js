@@ -212,8 +212,11 @@ export async function getNotifications() {
 }
 
 // 전체 읽음 처리
-export async function readAllNotifications() {
-  return fetchJSON(`${BASE}/notifications/read-all`, { method: 'PATCH' })
+export async function readAllNotifications(token) {
+  return fetchJSON(`${BASE}/notifications/read-all`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+  })
 }
 
 // VAPID 공개키 조회
@@ -222,11 +225,11 @@ export async function getVapidPublicKey() {
 }
 
 // 푸시 구독 저장
-export async function savePushSubscription(subscription) {
+export async function savePushSubscription(subscription, token) {
   const { endpoint, keys } = subscription.toJSON()
   return fetchJSON(`${BASE}/push/subscribe`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ endpoint, keys }),
   })
 }

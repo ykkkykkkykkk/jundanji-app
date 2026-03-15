@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { getNotifications, readAllNotifications, getVapidPublicKey, savePushSubscription, deletePushSubscription } from '../api/index'
 import { isPushSupported, subscribePush, unsubscribePush, getPushSubscription } from '../utils/push'
 
-export default function NotificationPage({ onBack, onUnreadChange, showToast }) {
+export default function NotificationPage({ onBack, onUnreadChange, showToast, token }) {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [pushSubscribed, setPushSubscribed] = useState(false)
@@ -29,7 +29,7 @@ export default function NotificationPage({ onBack, onUnreadChange, showToast }) 
   }, [])
 
   const handleReadAll = async () => {
-    await readAllNotifications()
+    await readAllNotifications(token)
     setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })))
     onUnreadChange?.(0)
   }
@@ -50,7 +50,7 @@ export default function NotificationPage({ onBack, onUnreadChange, showToast }) 
         // 구독 시작
         const vapidKey = await getVapidPublicKey()
         const sub = await subscribePush(vapidKey)
-        await savePushSubscription(sub)
+        await savePushSubscription(sub, token)
         setPushSubscribed(true)
       }
     } catch (e) {

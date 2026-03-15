@@ -486,6 +486,7 @@ export default function App() {
             onBack={() => setPage('main')}
             onUnreadChange={setUnreadCount}
             showToast={showToast}
+            token={auth?.token}
           />
         )}
 
